@@ -30,9 +30,11 @@ type DriverRemarks = Partial<Record<"Hon" | "Jay" | "JH", string>>;
 interface CalEvent {
   id: string;
   driver: "Hon" | "Jay" | "JH";
-  time: string; // "HH:mm" or "" = all-day
-  endTime?: string; // "HH:mm" — ถ้าไม่มีจะคำนวณจาก duration
-  duration?: number; // นาที (default 60)
+  startDate?: string; // YYYY-MM-DD (ถ้าไม่มี = วันที่ entry นั้นอยู่)
+  endDate?: string;   // YYYY-MM-DD (optional, multi-day)
+  time: string;       // "HH:mm" or "" = all-day
+  endTime?: string;   // "HH:mm"
+  duration?: number;  // นาที (backward compat)
   detail: string;
   gcalId?: string;
 }
@@ -183,8 +185,18 @@ export default function Home() {
         if (data?.events) {
           const grouped: Record<string, CalEvent[]> = {};
           for (const ev of data.events) {
+            const mapped: CalEvent = {
+              id: ev.id,
+              driver: ev.driver,
+              startDate: ev.date,
+              endDate: ev.endDate || undefined,
+              time: ev.time || "",
+              endTime: ev.endTime || undefined,
+              detail: ev.detail,
+              gcalId: ev.gcalId,
+            };
             if (!grouped[ev.date]) grouped[ev.date] = [];
-            grouped[ev.date].push(ev);
+            grouped[ev.date].push(mapped);
           }
           setPulledEvents(grouped);
         }
@@ -210,13 +222,38 @@ export default function Home() {
       }
       const base = schedule[dateKey] || { morning: "", evening: "", fuel: "", mileage: "", remarks: {} };
       // Merge pulled calendar events that aren't already in local events
+      // Merge pulled calendar events
       const pulled = pulledEvents[dateKey];
+      let events = [...(base.events || [])];
       if (pulled && pulled.length > 0) {
-        const localIds = new Set((base.events || []).map((e) => e.id));
-        const newPulled = pulled.filter((e) => !localIds.has(e.id));
-        if (newPulled.length > 0) {
-          return { ...base, events: [...(base.events || []), ...newPulled] };
+        const localIds = new Set(events.map((e) => e.id));
+        events = [...events, ...pulled.filter((e) => !localIds.has(e.id))];
+      }
+      // Merge multi-day events from other days that span into this date
+      const ids = new Set(events.map((e) => e.id));
+      for (const [otherKey, otherEntry] of Object.entries(schedule)) {
+        if (otherKey === dateKey) continue;
+        for (const ev of otherEntry.events || []) {
+          if (ids.has(ev.id)) continue;
+          if (ev.endDate && ev.startDate && ev.startDate <= dateKey && ev.endDate >= dateKey) {
+            events.push(ev);
+            ids.add(ev.id);
+          }
         }
+      }
+      // Also scan pulled events from other dates for multi-day
+      for (const [otherDate, otherPulled] of Object.entries(pulledEvents)) {
+        if (otherDate === dateKey) continue;
+        for (const ev of otherPulled) {
+          if (ids.has(ev.id)) continue;
+          if (ev.endDate && ev.startDate && ev.startDate <= dateKey && ev.endDate >= dateKey) {
+            events.push(ev);
+            ids.add(ev.id);
+          }
+        }
+      }
+      if (events.length !== (base.events || []).length) {
+        return { ...base, events };
       }
       return base;
     },
@@ -637,12 +674,6 @@ export default function Home() {
                             </span>
                           )}
                         </div>
-                        {isEditing && (
-                          <div className="flex gap-3 mt-2.5">
-                            <button onClick={(e) => { e.stopPropagation(); cancelEdit(); }} className="text-[13px] text-[var(--c-text-2)] hover:text-[var(--c-text)]">ยกเลิก</button>
-                            <button onClick={(e) => { e.stopPropagation(); saveDay(); }} className="text-[13px] text-[var(--c-accent)] font-medium">บันทึก</button>
-                          </div>
-                        )}
                       </td>
                       <td className="px-4 py-3.5">
                         <DriverCell
@@ -675,11 +706,14 @@ export default function Home() {
                       </td>
                       <td className="px-4 py-3.5">
                         <CalendarEventCell
+                          dateKey={dateKey}
                           events={entry.events || []}
                           emojis={entry.emojis || []}
                           editMode={isEditing}
                           onEventsChange={(v) => handleEventsChange(dateKey, v)}
                           onEmojisChange={(v) => handleEmojisChange(dateKey, v)}
+                          onSave={saveDay}
+                          onCancel={cancelEdit}
                         />
                       </td>
                     </tr>
@@ -708,13 +742,13 @@ export default function Home() {
                       : ""
                   }`}
                 >
-                  {/* Day header — tappable */}
-                  <button
-                    type="button"
-                    onClick={() => isEditing ? saveDay() : startEditing(dateKey)}
-                    className="w-full flex items-center justify-between px-4 py-3.5"
-                  >
-                    <div className="flex items-center gap-2.5">
+                  {/* Day header */}
+                  <div className="w-full flex items-center justify-between px-4 py-3.5">
+                    <button
+                      type="button"
+                      onClick={() => { if (!isEditing) startEditing(dateKey); }}
+                      className="flex items-center gap-2.5 flex-1 min-w-0"
+                    >
                       <span className={`font-semibold text-[17px] ${today ? "text-[var(--c-accent)]" : "text-[var(--c-text)]"}`}>
                         {THAI_DAYS[day.getDay()]}
                       </span>
@@ -724,26 +758,34 @@ export default function Home() {
                       {today && (
                         <span className="px-1.5 py-0.5 bg-[var(--c-accent)]/15 text-[var(--c-accent)] rounded-full text-[11px] font-semibold">วันนี้</span>
                       )}
-                    </div>
-                    <div className="flex items-center gap-2">
+                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
                       {savedFlash === dateKey && (
                         <span className="text-[#30D158] text-[13px] font-medium">บันทึกแล้ว</span>
                       )}
-                      {!isEditing && (entry.morning || entry.evening) && (
-                        <div className="flex items-center gap-1 text-[13px]">
-                          {entry.morning && <span className={`${getDriverStyle(entry.morning).color} font-medium`}>{entry.morning}</span>}
-                          {entry.morning && entry.evening && <span className="text-[var(--c-text-4)]">/</span>}
-                          {entry.evening && <span className={`${getDriverStyle(entry.evening).color} font-medium`}>{entry.evening}</span>}
-                        </div>
+                      {isEditing ? (
+                        <span className="text-[12px] text-[var(--c-accent)] font-medium">editing</span>
+                      ) : (
+                        <>
+                          {(entry.morning || entry.evening) && (
+                            <div className="flex items-center gap-1 text-[13px]">
+                              {entry.morning && <span className={`${getDriverStyle(entry.morning).color} font-medium`}>{entry.morning}</span>}
+                              {entry.morning && entry.evening && <span className="text-[var(--c-text-4)]">/</span>}
+                              {entry.evening && <span className={`${getDriverStyle(entry.evening).color} font-medium`}>{entry.evening}</span>}
+                            </div>
+                          )}
+                          {entry.emojis && entry.emojis.length > 0 && (
+                            <span className="flex items-center gap-0.5">{entry.emojis.map((e, i) => <Emoji key={i} char={e} size={13} />)}</span>
+                          )}
+                          <button type="button" onClick={() => startEditing(dateKey)}>
+                            <svg className="w-[14px] h-[14px] text-[var(--c-text-3)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                        </>
                       )}
-                      {!isEditing && entry.emojis && entry.emojis.length > 0 && (
-                        <span className="flex items-center gap-0.5">{entry.emojis.map((e, i) => <Emoji key={i} char={e} size={13} />)}</span>
-                      )}
-                      <svg className={`w-[14px] h-[14px] text-[var(--c-text-3)] transition-transform ${isEditing ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
                     </div>
-                  </button>
+                  </div>
 
                   {/* Expanded edit area */}
                   {isEditing && <div className="px-4 pb-4">
@@ -797,29 +839,16 @@ export default function Home() {
                   <div>
                     <div className="text-[13px] text-[var(--c-text-2)] mb-2 font-medium uppercase tracking-wide">กิจกรรม</div>
                     <CalendarEventCell
+                      dateKey={dateKey}
                       events={entry.events || []}
                       emojis={entry.emojis || []}
                       editMode={isEditing}
                       onEventsChange={(v) => handleEventsChange(dateKey, v)}
                       onEmojisChange={(v) => handleEmojisChange(dateKey, v)}
+                      onSave={saveDay}
+                      onCancel={cancelEdit}
                       mobile
                     />
-
-                    {/* Apple-style action buttons */}
-                    <div className="flex gap-2 mt-5">
-                      <button
-                        onClick={cancelEdit}
-                        className="px-5 py-2.5 rounded-[10px] text-[15px] font-normal text-[var(--c-text-2)] bg-[var(--c-fill-2)] active:bg-[var(--c-fill)] transition-colors"
-                      >
-                        ยกเลิก
-                      </button>
-                      <button
-                        onClick={saveDay}
-                        className="flex-1 py-2.5 rounded-[10px] text-[15px] font-semibold text-white bg-[var(--c-accent)] active:brightness-90 transition-all"
-                      >
-                        บันทึก
-                      </button>
-                    </div>
                   </div></div>}
                 </div>
               );
@@ -1254,46 +1283,54 @@ const REMARK_EMOJIS = [
   { emoji: "\uD83E\uDE78", label: "blood" },
 ];
 
-const DURATION_OPTS = [
-  { label: "30m", value: 30 },
-  { label: "1h", value: 60 },
-  { label: "1.5h", value: 90 },
-  { label: "2h", value: 120 },
-  { label: "3h", value: 180 },
-];
-
-function nextHour(): string {
-  const now = new Date();
-  const h = now.getMinutes() > 0 ? now.getHours() + 1 : now.getHours();
-  return `${String(h % 24).padStart(2, "0")}:00`;
-}
-
 function CalendarEventCell({
+  dateKey,
   events,
   emojis,
   editMode,
   onEventsChange,
   onEmojisChange,
+  onSave,
+  onCancel,
   mobile,
 }: {
+  dateKey: string;
   events: CalEvent[];
   emojis: string[];
   editMode: boolean;
   onEventsChange: (v: CalEvent[]) => void;
   onEmojisChange: (v: string[]) => void;
+  onSave?: () => void;
+  onCancel?: () => void;
   mobile?: boolean;
 }) {
-  const [formDriver, setFormDriver] = useState<"Hon" | "Jay" | "JH" | "">("")
+  const [formDriver, setFormDriver] = useState<"Hon" | "Jay" | "JH" | "">("");
+  const [formStartDate, setFormStartDate] = useState(dateKey);
+  const [formEndDate, setFormEndDate] = useState("");
+  const [formEnableEndDate, setFormEnableEndDate] = useState(false);
   const [formTime, setFormTime] = useState("");
+  const [formEndTime, setFormEndTime] = useState("");
   const [formDetail, setFormDetail] = useState("");
   const [formAllDay, setFormAllDay] = useState(false);
-  const [formDuration, setFormDuration] = useState(60);
   const [editingId, setEditingId] = useState<string | null>(null);
   const timeRef = useRef<HTMLInputElement>(null);
+  const endTimeRef = useRef<HTMLInputElement>(null);
 
   const openTimePicker = () => {
     if (!formTime && timeRef.current) timeRef.current.value = "09:00";
     try { timeRef.current?.showPicker(); } catch { timeRef.current?.focus(); }
+  };
+
+  const openEndTimePicker = () => {
+    if (!formEndTime && endTimeRef.current) {
+      if (formTime) {
+        const [h, m] = formTime.split(":").map(Number);
+        endTimeRef.current.value = `${String(Math.min(h + 1, 23)).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      } else {
+        endTimeRef.current.value = "10:00";
+      }
+    }
+    try { endTimeRef.current?.showPicker(); } catch { endTimeRef.current?.focus(); }
   };
 
   const toggleEmoji = (emoji: string) => {
@@ -1301,21 +1338,33 @@ function CalendarEventCell({
   };
 
   const resetForm = () => {
-    setFormDriver(""); setFormTime(""); setFormDetail("");
-    setFormAllDay(false); setFormDuration(60); setEditingId(null);
+    setFormDriver(""); setFormTime(""); setFormEndTime(""); setFormDetail("");
+    setFormAllDay(false); setFormStartDate(dateKey); setFormEndDate("");
+    setFormEnableEndDate(false); setEditingId(null);
   };
 
   const startEdit = (ev: CalEvent) => {
-    setEditingId(ev.id); setFormDriver(ev.driver); setFormDetail(ev.detail);
-    setFormAllDay(!ev.time); setFormTime(ev.time || ""); setFormDuration(ev.duration || 60);
+    setEditingId(ev.id);
+    setFormDriver(ev.driver);
+    setFormDetail(ev.detail);
+    setFormAllDay(!ev.time);
+    setFormTime(ev.time || "");
+    setFormEndTime(ev.endTime || "");
+    setFormStartDate(ev.startDate || dateKey);
+    setFormEndDate(ev.endDate || "");
+    setFormEnableEndDate(!!ev.endDate);
   };
 
   const saveEvent = () => {
     if (!formDetail.trim() || !formDriver) return;
     const ev: CalEvent = {
       id: editingId || crypto.randomUUID().slice(0, 8),
-      driver: formDriver as "Hon" | "Jay" | "JH", time: formAllDay ? "" : formTime,
-      duration: formAllDay ? undefined : formDuration, detail: formDetail.trim(),
+      driver: formDriver as "Hon" | "Jay" | "JH",
+      startDate: formStartDate || dateKey,
+      endDate: formEnableEndDate && formEndDate ? formEndDate : undefined,
+      time: formAllDay ? "" : formTime,
+      endTime: formAllDay ? undefined : (formEndTime || undefined),
+      detail: formDetail.trim(),
     };
     if (editingId) {
       onEventsChange(events.map((e) => (e.id === editingId ? { ...ev, gcalId: e.gcalId } : e)));
@@ -1337,6 +1386,11 @@ function CalendarEventCell({
     return a.time.localeCompare(b.time);
   });
 
+  const shortDate = (d: string) => {
+    const p = d.split("-");
+    return `${parseInt(p[2])}/${parseInt(p[1])}`;
+  };
+
   // --- display mode ---
   if (!editMode) {
     if (events.length === 0 && emojis.length === 0) {
@@ -1349,10 +1403,13 @@ function CalendarEventCell({
         )}
         {sorted.map((ev) => {
           const d = DRIVERS.find((dr) => dr.name === ev.driver)!;
+          const isMultiDay = ev.endDate && ev.startDate;
           return (
             <div key={ev.id} className="flex items-center gap-1.5">
               {ev.time ? (
-                <span className="text-[11px] text-[var(--c-text-3)] font-mono shrink-0">{ev.time}</span>
+                <span className="text-[11px] text-[var(--c-text-3)] font-mono shrink-0">
+                  {ev.time}{ev.endTime ? `–${ev.endTime}` : ""}
+                </span>
               ) : (
                 <span className="text-[10px] text-[var(--c-text-4)] shrink-0">ALL-DAY</span>
               )}
@@ -1362,6 +1419,11 @@ function CalendarEventCell({
               <span className="text-[13px] text-[var(--c-text-2)] leading-snug break-words line-clamp-1">
                 {ev.detail}
               </span>
+              {isMultiDay && (
+                <span className="text-[10px] text-[var(--c-text-4)] shrink-0">
+                  ({shortDate(ev.startDate!)}–{shortDate(ev.endDate!)})
+                </span>
+              )}
             </div>
           );
         })}
@@ -1396,6 +1458,7 @@ function CalendarEventCell({
           {sorted.map((ev) => {
             const d = DRIVERS.find((dr) => dr.name === ev.driver)!;
             const active = editingId === ev.id;
+            const isMultiDay = ev.endDate && ev.startDate;
             return (
               <div key={ev.id}
                 onClick={() => { if (!active) startEdit(ev); }}
@@ -1405,8 +1468,8 @@ function CalendarEventCell({
                     : "bg-[var(--c-fill-3)]/60 hover:bg-[var(--c-fill-2)]"
                 }`}
               >
-                <span className={`shrink-0 text-[11px] font-mono w-11 ${ev.time ? "text-[var(--c-text-2)]" : "text-[var(--c-text-4)] text-[10px] tracking-tight"}`}>
-                  {ev.time || "All-day"}
+                <span className={`shrink-0 text-[11px] font-mono ${ev.time ? "text-[var(--c-text-2)]" : "text-[var(--c-text-4)] text-[10px] tracking-tight"}`}>
+                  {ev.time ? (ev.endTime ? `${ev.time}–${ev.endTime}` : ev.time) : "All-day"}
                 </span>
                 <span className={`shrink-0 px-1.5 py-0.5 rounded-[5px] text-[11px] font-bold ${d.bg} ${d.color}`}>
                   {d.label}
@@ -1414,6 +1477,11 @@ function CalendarEventCell({
                 <span className="text-[13px] text-[var(--c-text)] leading-snug flex-1 truncate font-medium">
                   {ev.detail}
                 </span>
+                {isMultiDay && (
+                  <span className="shrink-0 text-[9px] text-[var(--c-text-3)] bg-[var(--c-fill-2)] px-1.5 py-0.5 rounded-full">
+                    {shortDate(ev.startDate!)}–{shortDate(ev.endDate!)}
+                  </span>
+                )}
                 {active && (
                   <span className="shrink-0 text-[10px] text-[var(--c-accent)] font-medium">editing</span>
                 )}
@@ -1431,30 +1499,25 @@ function CalendarEventCell({
       )}
 
       {/* Event form — add / edit */}
-      <div
-        onClick={() => { if (!formAllDay && !formTime && !isEditingExisting) openTimePicker(); }}
-        className={`rounded-[12px] border overflow-hidden transition-all ${
-          isEditingExisting
-            ? "border-[var(--c-accent)]/30 bg-[var(--c-accent)]/5"
-            : !formAllDay && !formTime
-            ? "border-[var(--c-sep)]/60 bg-[var(--c-fill-3)]/40 cursor-pointer"
-            : "border-[var(--c-sep)]/60 bg-[var(--c-fill-3)]/40"
-        }`}
-      >
+      <div className={`rounded-[12px] border overflow-hidden transition-all ${
+        isEditingExisting
+          ? "border-[var(--c-accent)]/30 bg-[var(--c-accent)]/5"
+          : "border-[var(--c-sep)]/60 bg-[var(--c-fill-3)]/40"
+      }`}>
         {/* Form header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--c-sep)]/40">
           <span className={`text-[12px] font-semibold tracking-wide ${isEditingExisting ? "text-[var(--c-accent)]" : "text-[var(--c-text-2)]"}`}>
-            {isEditingExisting ? "Edit Event" : !formAllDay && !formTime ? "Tap to pick time" : "New Event"}
+            {isEditingExisting ? "Edit Event" : "New Event"}
           </span>
           {isEditingExisting && (
-            <button type="button" onClick={(e) => { e.stopPropagation(); resetForm(); }}
+            <button type="button" onClick={resetForm}
               className="text-[12px] text-[var(--c-text-3)] hover:text-[var(--c-text)] font-medium transition-colors"
             >Cancel</button>
           )}
         </div>
 
-        <div className="px-3 py-2.5 space-y-2.5" onClick={(e) => e.stopPropagation()}>
-          {/* Row 1: Driver + All-day */}
+        <div className="px-3 py-2.5 space-y-2.5">
+          {/* Row 1: Driver pills */}
           <div className="flex items-center gap-1.5">
             {DRIVERS.map((d) => (
               <button key={d.name} type="button"
@@ -1466,48 +1529,94 @@ function CalendarEventCell({
                 }`}
               >{d.label}</button>
             ))}
-            <div className="w-px h-5 bg-[var(--c-sep)]/40 mx-0.5" />
+          </div>
+
+          {/* Row 2: Start date + End date */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-[var(--c-text-3)] w-8">Start</span>
+              <input type="date" value={formStartDate}
+                onChange={(e) => setFormStartDate(e.target.value)}
+                className="py-1 px-2 rounded-[8px] bg-[var(--c-fill-2)] text-[var(--c-text)] text-[13px] border-0 focus:outline-none focus:ring-1 focus:ring-[var(--c-accent)]/50 [color-scheme:dark]"
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input type="checkbox" checked={formEnableEndDate}
+                  onChange={(e) => {
+                    setFormEnableEndDate(e.target.checked);
+                    if (e.target.checked && !formEndDate) {
+                      const d = new Date(formStartDate || dateKey);
+                      d.setDate(d.getDate() + 1);
+                      setFormEndDate(formatDateKey(d));
+                    }
+                  }}
+                  className="w-3.5 h-3.5 rounded accent-[var(--c-accent)]"
+                />
+                <span className="text-[11px] text-[var(--c-text-3)]">End</span>
+              </label>
+              {formEnableEndDate && (
+                <input type="date" value={formEndDate}
+                  onChange={(e) => setFormEndDate(e.target.value)}
+                  min={formStartDate}
+                  className="py-1 px-2 rounded-[8px] bg-[var(--c-fill-2)] text-[var(--c-text)] text-[13px] border-0 focus:outline-none focus:ring-1 focus:ring-[var(--c-accent)]/50 [color-scheme:dark]"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Row 3: All-day + Start time → End time */}
+          <div className="flex items-center gap-1.5 flex-wrap">
             <button type="button"
-              onClick={() => { setFormAllDay(!formAllDay); if (!formAllDay) setFormTime(""); }}
+              onClick={() => { setFormAllDay(!formAllDay); if (!formAllDay) { setFormTime(""); setFormEndTime(""); } }}
               className={`px-3 py-1.5 text-[12px] rounded-full font-semibold transition-all active:scale-95 ${
                 formAllDay
                   ? "bg-[var(--c-accent)]/15 text-[var(--c-accent)] ring-1 ring-[var(--c-accent)]/40"
                   : "bg-[var(--c-fill-2)] text-[var(--c-text-3)]"
               }`}
             >All-day</button>
+            {!formAllDay && (
+              <>
+                <button type="button" onClick={openTimePicker}
+                  className={`relative h-[34px] px-3 rounded-[8px] text-[13px] font-semibold transition-all active:scale-95 ${
+                    formTime
+                      ? "bg-[var(--c-fill-2)] text-[var(--c-text)]"
+                      : "bg-[var(--c-accent)]/12 text-[var(--c-accent)] ring-1 ring-[var(--c-accent)]/30"
+                  }`}
+                >
+                  {formTime || "--:--"}
+                  <input ref={timeRef} type="time" value={formTime}
+                    onChange={(e) => {
+                      setFormTime(e.target.value);
+                      if (!formEndTime && e.target.value) {
+                        const [h, m] = e.target.value.split(":").map(Number);
+                        setFormEndTime(`${String(Math.min(h + 1, 23)).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+                      }
+                    }}
+                    className="absolute inset-0 opacity-0 cursor-pointer [color-scheme:dark]"
+                    tabIndex={-1}
+                  />
+                </button>
+                <span className="text-[11px] text-[var(--c-text-4)]">→</span>
+                <button type="button" onClick={openEndTimePicker}
+                  className={`relative h-[34px] px-3 rounded-[8px] text-[13px] font-semibold transition-all active:scale-95 ${
+                    formEndTime
+                      ? "bg-[var(--c-fill-2)] text-[var(--c-text)]"
+                      : "bg-[var(--c-fill-3)] text-[var(--c-text-4)]"
+                  }`}
+                >
+                  {formEndTime || "--:--"}
+                  <input ref={endTimeRef} type="time" value={formEndTime}
+                    onChange={(e) => setFormEndTime(e.target.value)}
+                    className="absolute inset-0 opacity-0 cursor-pointer [color-scheme:dark]"
+                    tabIndex={-1}
+                  />
+                </button>
+              </>
+            )}
           </div>
 
-          {/* Row 2: Time + Duration (only when not all-day) */}
-          {!formAllDay && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <button type="button" onClick={openTimePicker}
-                className={`relative w-[100px] h-[34px] rounded-[8px] text-[14px] font-semibold text-center transition-all active:scale-95 ${
-                  formTime
-                    ? "bg-[var(--c-fill-2)] text-[var(--c-text)]"
-                    : "bg-[var(--c-accent)]/12 text-[var(--c-accent)] ring-1 ring-[var(--c-accent)]/30"
-                }`}
-              >
-                {formTime || "--:--"}
-                <input ref={timeRef} type="time" value={formTime}
-                  onChange={(e) => setFormTime(e.target.value)}
-                  className="absolute inset-0 opacity-0 cursor-pointer [color-scheme:dark]"
-                  tabIndex={-1}
-                />
-              </button>
-              {DURATION_OPTS.map((dp) => (
-                <button key={dp.value} type="button"
-                  onClick={() => setFormDuration(dp.value)}
-                  className={`px-2.5 py-1 text-[11px] rounded-full font-medium transition-all active:scale-95 ${
-                    formDuration === dp.value
-                      ? "bg-[var(--c-text)] text-[var(--c-bg)] shadow-sm"
-                      : "bg-[var(--c-fill-2)] text-[var(--c-text-3)] hover:text-[var(--c-text-2)]"
-                  }`}
-                >{dp.label}</button>
-              ))}
-            </div>
-          )}
-
-          {/* Row 3: Detail + Save */}
+          {/* Row 4: Detail + Save */}
           <div className="flex gap-1.5 items-center">
             <input type="text" value={formDetail}
               onChange={(e) => setFormDetail(e.target.value)}
@@ -1524,6 +1633,21 @@ function CalendarEventCell({
             >{isEditingExisting ? "Save" : "Add"}</button>
           </div>
         </div>
+
+        {/* Day-level save/cancel — inside the card */}
+        {onSave && onCancel && (
+          <>
+            <div className="border-t border-[var(--c-sep)]" />
+            <div className="flex justify-end gap-2 px-3 py-2.5">
+              <button type="button" onClick={onCancel}
+                className="px-4 py-2 rounded-[8px] text-[14px] text-[var(--c-text-2)] bg-[var(--c-fill-2)] active:bg-[var(--c-fill)] transition-colors"
+              >ยกเลิก</button>
+              <button type="button" onClick={onSave}
+                className="px-5 py-2 rounded-[8px] text-[14px] font-semibold text-white bg-[var(--c-accent)] active:brightness-90 transition-all"
+              >บันทึก</button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -1561,48 +1685,46 @@ function EventDashboard({ monday, getEntry }: { monday: Date; getEntry: (key: st
 
           return (
             <div key={i} className={`px-1 py-2.5 md:px-2 md:py-3 ${todayFlag ? "bg-[var(--c-accent)]/8" : ""}`}>
-              {/* Day + Date */}
+              {/* Day + Date + Emojis */}
               <div className={`text-[11px] md:text-[13px] font-semibold text-center ${todayFlag ? "text-[var(--c-accent)]" : "text-[var(--c-text-2)]"}`}>
                 {MINI_DAYS[i]} <span className={`font-normal ${todayFlag ? "text-[var(--c-accent)]/70" : "text-[var(--c-text-3)]"}`}>{day.getDate()}/{day.getMonth() + 1}</span>
+                {entry.emojis && entry.emojis.length > 0 && (
+                  <span className="ml-0.5">{entry.emojis.map((e, j) => <Emoji key={j} char={e} size={9} />)}</span>
+                )}
               </div>
 
-              {/* Driver summary */}
-              <div className="flex items-center justify-center gap-1 mt-1.5">
-                {entry.morning ? (
-                  <span className={`font-bold text-[10px] ${DRIVERS.find((d) => d.name === entry.morning)?.color || ""}`}>{entry.morning}</span>
-                ) : <span className="text-[var(--c-text-4)] text-[10px]">{"\u2014"}</span>}
-                <span className="text-[var(--c-text-4)] text-[8px]">/</span>
-                {entry.evening ? (
-                  <span className={`font-bold text-[10px] ${DRIVERS.find((d) => d.name === entry.evening)?.color || ""}`}>{entry.evening}</span>
-                ) : <span className="text-[var(--c-text-4)] text-[10px]">{"\u2014"}</span>}
-              </div>
-
-              {/* Emojis */}
-              {entry.emojis && entry.emojis.length > 0 && (
-                <div className="flex items-center justify-center gap-0.5 mt-1">
-                  {entry.emojis.map((e, j) => <Emoji key={j} char={e} size={10} />)}
+              {/* Driver summary: ส่ง X / รับ X */}
+              <div className="mt-1.5 text-center space-y-0.5">
+                <div className="flex items-center justify-center gap-0.5">
+                  <span className="text-[9px] text-[var(--c-text-3)]">ส่ง</span>
+                  {entry.morning ? (
+                    <span className={`font-bold text-[10px] ${DRIVERS.find((d) => d.name === entry.morning)?.color || ""}`}>{entry.morning}</span>
+                  ) : <span className="text-[var(--c-text-4)] text-[10px]">{"\u2014"}</span>}
                 </div>
-              )}
+                <div className="flex items-center justify-center gap-0.5">
+                  <span className="text-[9px] text-[var(--c-text-3)]">รับ</span>
+                  {entry.evening ? (
+                    <span className={`font-bold text-[10px] ${DRIVERS.find((d) => d.name === entry.evening)?.color || ""}`}>{entry.evening}</span>
+                  ) : <span className="text-[var(--c-text-4)] text-[10px]">{"\u2014"}</span>}
+                </div>
+              </div>
 
-              {/* Events */}
+              {/* Events — show all */}
               {sorted.length > 0 && (
                 <div className="mt-1.5 space-y-0.5">
-                  {sorted.slice(0, 3).map((ev) => {
+                  {sorted.map((ev) => {
                     const d = DRIVERS.find((dr) => dr.name === ev.driver);
                     return (
-                      <div key={ev.id} className="flex items-center gap-0.5 min-w-0">
-                        {ev.time && (
-                          <span className="text-[8px] text-[var(--c-text-4)] font-mono shrink-0">{ev.time}</span>
-                        )}
+                      <div key={ev.id} className="flex items-start gap-1.5 min-w-0">
+                        <span className="text-[9px] text-[var(--c-text)] font-mono shrink-0 text-right">
+                          {ev.time ? (ev.endTime ? `${ev.time}–${ev.endTime}` : ev.time) : "Day"}
+                        </span>
                         <span className={`text-[9px] md:text-[10px] leading-tight truncate ${d?.color || "text-[var(--c-text-2)]"}`}>
                           {ev.detail}
                         </span>
                       </div>
                     );
                   })}
-                  {sorted.length > 3 && (
-                    <span className="text-[8px] text-[var(--c-text-4)]">+{sorted.length - 3} more</span>
-                  )}
                 </div>
               )}
 

@@ -57,7 +57,9 @@ export async function GET(req: NextRequest) {
       id: string;
       driver: string;
       date: string;
+      endDate?: string;
       time: string;
+      endTime?: string;
       detail: string;
       gcalId: string;
     }
@@ -76,18 +78,33 @@ export async function GET(req: NextRequest) {
       for (const item of data.items || []) {
         // Extract cakeId if set
         const cakeId = item.extendedProperties?.private?.cakeId || "";
-        // Parse date from start
+        // Parse date/time from start/end
         let date = "";
+        let endDate: string | undefined;
         let time = "";
+        let endTime: string | undefined;
+
         if (item.start?.date) {
           // All-day event
           date = item.start.date;
+          if (item.end?.date) {
+            // Google Calendar all-day end is exclusive — subtract 1 day
+            const ed = new Date(item.end.date);
+            ed.setDate(ed.getDate() - 1);
+            const endStr = ed.toISOString().slice(0, 10);
+            if (endStr !== date) endDate = endStr;
+          }
         } else if (item.start?.dateTime) {
           // Timed event — parse directly from ISO string (already has +07:00)
-          // Format: "2026-02-09T09:30:00+07:00" → date="2026-02-09", time="09:30"
-          const raw = item.start.dateTime as string;
-          date = raw.slice(0, 10);
-          time = raw.slice(11, 16);
+          const rawStart = item.start.dateTime as string;
+          date = rawStart.slice(0, 10);
+          time = rawStart.slice(11, 16);
+          if (item.end?.dateTime) {
+            const rawEnd = item.end.dateTime as string;
+            const endDateStr = rawEnd.slice(0, 10);
+            endTime = rawEnd.slice(11, 16);
+            if (endDateStr !== date) endDate = endDateStr;
+          }
         }
 
         // Parse detail: strip "Name - " prefix if present
@@ -101,7 +118,9 @@ export async function GET(req: NextRequest) {
           id: cakeId || item.id?.slice(0, 8) || crypto.randomUUID().slice(0, 8),
           driver,
           date,
+          endDate,
           time,
+          endTime,
           detail,
           gcalId: item.id || "",
         });
@@ -118,8 +137,11 @@ export async function GET(req: NextRequest) {
 interface CalEvent {
   id: string;
   driver: "Hon" | "Jay" | "JH";
-  time: string; // "HH:mm" or "" for all-day
-  duration?: number; // minutes (default 60)
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string;   // YYYY-MM-DD (multi-day)
+  time: string;       // "HH:mm" or "" for all-day
+  endTime?: string;   // "HH:mm"
+  duration?: number;  // minutes (backward compat)
   detail: string;
   gcalId?: string;
 }
@@ -153,24 +175,39 @@ export async function POST(req: Request) {
         activeCakeIds.add(cakeId);
 
         const summary = `${ev.driver} - ${ev.detail}`;
+        const startDate = ev.startDate || date;
+        const endDate = ev.endDate || startDate;
+        const isMultiDay = startDate !== endDate;
 
-        // Build start/end based on time
+        // Build start/end based on time + dates
         let start: Record<string, string>;
         let end: Record<string, string>;
 
         if (ev.time) {
-          // Timed event with duration
-          start = { dateTime: `${date}T${ev.time}:00`, timeZone: "Asia/Bangkok" };
-          const [h, m] = ev.time.split(":").map(Number);
-          const dur = ev.duration || 60;
-          const totalMin = h * 60 + m + dur;
-          const endH = String(Math.floor(totalMin / 60) % 24).padStart(2, "0");
-          const endM = String(totalMin % 60).padStart(2, "0");
-          end = { dateTime: `${date}T${endH}:${endM}:00`, timeZone: "Asia/Bangkok" };
+          // Timed event
+          start = { dateTime: `${startDate}T${ev.time}:00`, timeZone: "Asia/Bangkok" };
+          if (ev.endTime) {
+            end = { dateTime: `${endDate}T${ev.endTime}:00`, timeZone: "Asia/Bangkok" };
+          } else {
+            // Fallback: use duration or default 1 hour
+            const [h, m] = ev.time.split(":").map(Number);
+            const dur = ev.duration || 60;
+            const totalMin = h * 60 + m + dur;
+            const endH = String(Math.floor(totalMin / 60) % 24).padStart(2, "0");
+            const endM = String(totalMin % 60).padStart(2, "0");
+            end = { dateTime: `${endDate}T${endH}:${endM}:00`, timeZone: "Asia/Bangkok" };
+          }
         } else {
-          // All-day
-          start = { date };
-          end = { date };
+          // All-day event
+          start = { date: startDate };
+          if (isMultiDay) {
+            // Google Calendar all-day end date is exclusive
+            const d = new Date(endDate);
+            d.setDate(d.getDate() + 1);
+            end = { date: d.toISOString().slice(0, 10) };
+          } else {
+            end = { date: startDate };
+          }
         }
 
         const eventBody = {
