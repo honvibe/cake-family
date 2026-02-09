@@ -217,8 +217,19 @@ export async function POST(req: Request) {
           extendedProperties: { private: { cakeId } },
         };
 
-        // Check if event already exists
-        const existingEventId = await findEvent(token, calendarId, cakeId);
+        // Check if event already exists — prefer gcalId (direct), fallback to cakeId search
+        let existingEventId: string | null = null;
+        if (ev.gcalId) {
+          // Verify the gcalId still exists
+          const checkRes = await fetch(
+            `${BASE}/calendars/${encodeURIComponent(calendarId)}/events/${ev.gcalId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (checkRes.ok) existingEventId = ev.gcalId;
+        }
+        if (!existingEventId) {
+          existingEventId = await findEvent(token, calendarId, cakeId);
+        }
 
         if (existingEventId) {
           await fetch(
@@ -243,17 +254,18 @@ export async function POST(req: Request) {
         }
       }
 
-      // Delete events that were removed: find all cake-app events for this date
-      for (const [driver, calendarId] of Object.entries(CALENDAR_IDS)) {
+      // Delete events that were removed: fetch ALL events for this date, check for cakeId
+      for (const [, calendarId] of Object.entries(CALENDAR_IDS)) {
         if (!calendarId) continue;
         const timeMin = `${date}T00:00:00+07:00`;
         const timeMax = `${date}T23:59:59+07:00`;
-        const url = `${BASE}/calendars/${encodeURIComponent(calendarId)}/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&privateExtendedProperty=cakeId%3D*&singleEvents=true&maxResults=50`;
+        const url = `${BASE}/calendars/${encodeURIComponent(calendarId)}/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&maxResults=50`;
         const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) continue;
         const data = await res.json();
         for (const gcalEvent of data.items || []) {
           const eid = gcalEvent.extendedProperties?.private?.cakeId;
+          // Only delete events managed by the app (have cakeId) that are no longer active
           if (eid && !activeCakeIds.has(eid)) {
             await fetch(
               `${BASE}/calendars/${encodeURIComponent(calendarId)}/events/${gcalEvent.id}`,
