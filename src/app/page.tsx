@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, FormEvent } from "react";
+import { useState, useEffect, useCallback, useRef, FormEvent } from "react";
 import Link from "next/link";
 import { Emoji } from "@/components/emoji";
 
@@ -27,12 +27,23 @@ type TabId = "schedule" | "price" | "travel";
 
 type DriverRemarks = Partial<Record<"Hon" | "Jay" | "JH", string>>;
 
+interface CalEvent {
+  id: string;
+  driver: "Hon" | "Jay" | "JH";
+  time: string; // "HH:mm" or "" = all-day
+  endTime?: string; // "HH:mm" — ถ้าไม่มีจะคำนวณจาก duration
+  duration?: number; // นาที (default 60)
+  detail: string;
+  gcalId?: string;
+}
+
 interface ScheduleEntry {
   morning: Driver;
   evening: Driver;
   fuel: string;
   mileage: string;
   remarks: DriverRemarks;
+  events?: CalEvent[];
   emojis?: string[];
   /** @deprecated old format, migrated to remarks */
   remark?: string;
@@ -81,23 +92,29 @@ function getDriverStyle(driver: Driver) {
   return { bg: d.bg, color: d.color, border: d.border };
 }
 
-// --- Weather + PM2.5 Dashboard ---
-const PHRA_PRADAENG = { lat: 13.66, lon: 100.53 };
-
-interface WeatherDay {
-  date: string;
-  tempMax: number;
-  tempMin: number;
-  weatherCode: number;
-  precipitation: number;
-  humidity: number;
-  pm25: number;
+// Migrate old remarks → CalEvent[]
+function migrateRemarks(entry: ScheduleEntry): ScheduleEntry {
+  if (entry.events && entry.events.length > 0) return entry; // already migrated
+  const remarks = entry.remarks || {};
+  const events: CalEvent[] = [];
+  for (const driver of ["Hon", "Jay", "JH"] as const) {
+    const text = remarks[driver];
+    if (text && text.trim()) {
+      events.push({
+        id: crypto.randomUUID().slice(0, 8),
+        driver,
+        time: "",
+        detail: text.trim(),
+      });
+    }
+  }
+  if (events.length === 0) return entry;
+  return { ...entry, events };
 }
 
 export default function Home() {
   const [currentMonday, setCurrentMonday] = useState<Date>(() => {
-    const feb2 = new Date(2026, 1, 2);
-    return getMonday(feb2);
+    return getMonday(new Date());
   });
   const [schedule, setSchedule] = useState<ScheduleData>({});
   const [editingDay, setEditingDay] = useState<string | null>(null);
@@ -113,6 +130,7 @@ export default function Home() {
   const [travelDetailOpen, setTravelDetailOpen] = useState(true);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pulledEvents, setPulledEvents] = useState<Record<string, CalEvent[]>>({});
 
   useEffect(() => {
     setAuthed(getAuthCookie());
@@ -123,16 +141,65 @@ export default function Home() {
     document.documentElement.classList.toggle("dark", next === "dark");
   }, []);
 
-  // Load schedule from server
+  // Load schedule from server + migrate remarks → events
   useEffect(() => {
     if (!authed) return;
     fetch("/api/schedule")
       .then((res) => res.json())
       .then((data) => {
-        if (data && !data.error) setSchedule(data);
+        if (data && !data.error) {
+          // Migrate old remarks → events for all entries
+          const migrated: ScheduleData = {};
+          let didMigrate = false;
+          for (const [key, entry] of Object.entries(data as ScheduleData)) {
+            const m = migrateRemarks(entry);
+            migrated[key] = m;
+            if (m !== entry) didMigrate = true;
+          }
+          setSchedule(migrated);
+          // Persist migrated data
+          if (didMigrate) {
+            fetch("/api/schedule", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(migrated),
+            }).catch(() => {});
+          }
+        }
       })
       .catch(() => {});
   }, [authed]);
+
+  const [calSyncing, setCalSyncing] = useState(false);
+
+  const pullCalendar = useCallback(() => {
+    const weekDaysLocal = getWeekDays(currentMonday);
+    const start = formatDateKey(weekDaysLocal[0]);
+    const end = formatDateKey(weekDaysLocal[6]);
+    setCalSyncing(true);
+    fetch(`/api/calendar/sync?start=${start}&end=${end}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.events) {
+          const grouped: Record<string, CalEvent[]> = {};
+          for (const ev of data.events) {
+            if (!grouped[ev.date]) grouped[ev.date] = [];
+            grouped[ev.date].push(ev);
+          }
+          setPulledEvents(grouped);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCalSyncing(false));
+  }, [currentMonday]);
+
+  // Pull on load, week change, and every 10 min
+  useEffect(() => {
+    if (!authed) return;
+    pullCalendar();
+    const interval = setInterval(pullCalendar, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [authed, currentMonday, pullCalendar]);
 
   const weekDays = getWeekDays(currentMonday);
 
@@ -141,15 +208,39 @@ export default function Home() {
       if (editingDay === dateKey && dayDraft) {
         return dayDraft;
       }
-      return schedule[dateKey] || { morning: "", evening: "", fuel: "", mileage: "", remarks: {} };
+      const base = schedule[dateKey] || { morning: "", evening: "", fuel: "", mileage: "", remarks: {} };
+      // Merge pulled calendar events that aren't already in local events
+      const pulled = pulledEvents[dateKey];
+      if (pulled && pulled.length > 0) {
+        const localIds = new Set((base.events || []).map((e) => e.id));
+        const newPulled = pulled.filter((e) => !localIds.has(e.id));
+        if (newPulled.length > 0) {
+          return { ...base, events: [...(base.events || []), ...newPulled] };
+        }
+      }
+      return base;
     },
-    [editingDay, dayDraft, schedule]
+    [editingDay, dayDraft, schedule, pulledEvents]
   );
 
   const [savedFlash, setSavedFlash] = useState<string | null>(null);
 
+  const scheduleRef = useRef(schedule);
+  scheduleRef.current = schedule;
+
+  const syncCalendar = useCallback((dateKey: string, newEntry: ScheduleEntry) => {
+    const events = newEntry.events || [];
+    // Always push the full events list for this date — API handles diff/delete
+    fetch("/api/calendar/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: [{ date: dateKey, events }] }),
+    }).catch(() => {});
+  }, []);
+
   const saveDay = useCallback(() => {
     if (!editingDay || !dayDraft) return;
+    syncCalendar(editingDay, dayDraft);
     const updated = { ...schedule, [editingDay]: dayDraft };
     setSchedule(updated);
     fetch("/api/schedule", {
@@ -162,12 +253,13 @@ export default function Home() {
     setDayDraft(null);
     setSavedFlash(saved);
     setTimeout(() => setSavedFlash(null), 1200);
-  }, [editingDay, dayDraft, schedule]);
+  }, [editingDay, dayDraft, schedule, syncCalendar]);
 
   const startEditing = (dateKey: string) => {
     if (editingDay === dateKey) return; // already editing this day — do nothing
     // If editing another day, auto-save first
     if (editingDay && dayDraft) {
+      syncCalendar(editingDay, dayDraft);
       const updated = { ...schedule, [editingDay]: dayDraft };
       setSchedule(updated);
       fetch("/api/schedule", {
@@ -178,9 +270,9 @@ export default function Home() {
       setSavedFlash(editingDay);
       setTimeout(() => setSavedFlash(null), 1200);
     }
-    const entry = schedule[dateKey] || { morning: "", evening: "", fuel: "", mileage: "", remarks: {} };
+    const entry = getEntry(dateKey);
     setEditingDay(dateKey);
-    setDayDraft({ ...entry });
+    setDayDraft({ ...entry, events: [...(entry.events || [])] });
   };
 
   const cancelEdit = () => {
@@ -212,14 +304,14 @@ export default function Home() {
     return max;
   }, [schedule]);
 
-  const handleRemarksChange = (dateKey: string, newRemarks: DriverRemarks) => {
-    if (editingDay !== dateKey || !dayDraft) return;
-    setDayDraft({ ...dayDraft, remarks: newRemarks });
-  };
-
   const handleEmojisChange = (dateKey: string, emojis: string[]) => {
     if (editingDay !== dateKey || !dayDraft) return;
     setDayDraft({ ...dayDraft, emojis });
+  };
+
+  const handleEventsChange = (dateKey: string, events: CalEvent[]) => {
+    if (editingDay !== dateKey || !dayDraft) return;
+    setDayDraft({ ...dayDraft, events });
   };
 
   const navigateWeek = (direction: number) => {
@@ -451,6 +543,16 @@ export default function Home() {
         <div className="flex items-center justify-between mb-5 md:mb-8">
           <h2 className="text-[22px] md:text-[28px] font-bold text-[var(--c-text)] tracking-tight">{weekRange()}</h2>
           <div className="flex items-center gap-0.5">
+            <button
+              onClick={pullCalendar}
+              disabled={calSyncing}
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[var(--c-fill-2)] transition-colors active:scale-95"
+              title="Sync Calendar"
+            >
+              <svg className={`w-[18px] h-[18px] text-[var(--c-text-2)] ${calSyncing ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+            </button>
             <Link
               href="/settings"
               className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[var(--c-fill-2)] transition-colors active:scale-95"
@@ -486,7 +588,7 @@ export default function Home() {
         </div>
 
         {/* Weather Dashboard */}
-        <WeatherDashboard monday={currentMonday} schedule={schedule} />
+        <EventDashboard monday={currentMonday} getEntry={getEntry} />
 
         {/* Schedule Table */}
         <div className="bg-[var(--c-card)] rounded-[14px] overflow-hidden">
@@ -496,11 +598,11 @@ export default function Home() {
               <thead>
                 <tr className="border-b border-[var(--c-sep)]">
                   <th className="px-5 py-3.5 text-left text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide w-36">วัน</th>
-                  <th className="px-5 py-3.5 text-center text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide">เช้า (รับ)</th>
-                  <th className="px-5 py-3.5 text-center text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide">เย็น (ส่ง)</th>
+                  <th className="px-5 py-3.5 text-center text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide">เช้า (ส่ง)</th>
+                  <th className="px-5 py-3.5 text-center text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide">เย็น (รับ)</th>
                   <th className="px-5 py-3.5 text-center text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide w-36">น้ำมัน</th>
                   <th className="px-5 py-3.5 text-center text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide w-44">เลขไมล์</th>
-                  <th className="px-5 py-3.5 text-left text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide w-48">หมายเหตุ</th>
+                  <th className="px-5 py-3.5 text-left text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide w-56">กิจกรรม</th>
                 </tr>
               </thead>
               <tbody>
@@ -572,11 +674,11 @@ export default function Home() {
                         />
                       </td>
                       <td className="px-4 py-3.5">
-                        <RemarkCell
-                          value={entry.remarks}
+                        <CalendarEventCell
+                          events={entry.events || []}
                           emojis={entry.emojis || []}
                           editMode={isEditing}
-                          onChange={(v) => handleRemarksChange(dateKey, v)}
+                          onEventsChange={(v) => handleEventsChange(dateKey, v)}
                           onEmojisChange={(v) => handleEmojisChange(dateKey, v)}
                         />
                       </td>
@@ -649,7 +751,7 @@ export default function Home() {
                   {/* Row 1: Morning + Evening */}
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div>
-                      <div className="text-[13px] text-[var(--c-text-2)] mb-2 font-medium uppercase tracking-wide">เช้า (รับ)</div>
+                      <div className="text-[13px] text-[var(--c-text-2)] mb-2 font-medium uppercase tracking-wide">เช้า (ส่ง)</div>
                       <DriverCell
                         value={entry.morning}
                         editMode={isEditing}
@@ -658,7 +760,7 @@ export default function Home() {
                       />
                     </div>
                     <div>
-                      <div className="text-[13px] text-[var(--c-text-2)] mb-2 font-medium uppercase tracking-wide">เย็น (ส่ง)</div>
+                      <div className="text-[13px] text-[var(--c-text-2)] mb-2 font-medium uppercase tracking-wide">เย็น (รับ)</div>
                       <DriverCell
                         value={entry.evening}
                         editMode={isEditing}
@@ -691,14 +793,14 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Row 3: Remark */}
+                  {/* Row 3: Calendar Events */}
                   <div>
-                    <div className="text-[13px] text-[var(--c-text-2)] mb-2 font-medium uppercase tracking-wide">หมายเหตุ</div>
-                    <RemarkCell
-                      value={entry.remarks}
+                    <div className="text-[13px] text-[var(--c-text-2)] mb-2 font-medium uppercase tracking-wide">กิจกรรม</div>
+                    <CalendarEventCell
+                      events={entry.events || []}
                       emojis={entry.emojis || []}
                       editMode={isEditing}
-                      onChange={(v) => handleRemarksChange(dateKey, v)}
+                      onEventsChange={(v) => handleEventsChange(dateKey, v)}
                       onEmojisChange={(v) => handleEmojisChange(dateKey, v)}
                       mobile
                     />
@@ -1152,39 +1254,92 @@ const REMARK_EMOJIS = [
   { emoji: "\uD83E\uDE78", label: "blood" },
 ];
 
-function RemarkCell({
-  value,
+const DURATION_OPTS = [
+  { label: "30m", value: 30 },
+  { label: "1h", value: 60 },
+  { label: "1.5h", value: 90 },
+  { label: "2h", value: 120 },
+  { label: "3h", value: 180 },
+];
+
+function nextHour(): string {
+  const now = new Date();
+  const h = now.getMinutes() > 0 ? now.getHours() + 1 : now.getHours();
+  return `${String(h % 24).padStart(2, "0")}:00`;
+}
+
+function CalendarEventCell({
+  events,
   emojis,
   editMode,
-  onChange,
+  onEventsChange,
   onEmojisChange,
   mobile,
 }: {
-  value: DriverRemarks;
+  events: CalEvent[];
   emojis: string[];
   editMode: boolean;
-  onChange: (v: DriverRemarks) => void;
+  onEventsChange: (v: CalEvent[]) => void;
   onEmojisChange: (v: string[]) => void;
   mobile?: boolean;
 }) {
-  type RKey = "Hon" | "Jay" | "JH";
-  const allKeys: RKey[] = ["Hon", "Jay", "JH"];
+  const [formDriver, setFormDriver] = useState<"Hon" | "Jay" | "JH" | "">("")
+  const [formTime, setFormTime] = useState("");
+  const [formDetail, setFormDetail] = useState("");
+  const [formAllDay, setFormAllDay] = useState(false);
+  const [formDuration, setFormDuration] = useState(60);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const timeRef = useRef<HTMLInputElement>(null);
 
-  // keys that have been toggled on (value can be "" which is valid)
-  const activeKeys = allKeys.filter((k) => k in value);
+  const openTimePicker = () => {
+    if (!formTime && timeRef.current) timeRef.current.value = "09:00";
+    try { timeRef.current?.showPicker(); } catch { timeRef.current?.focus(); }
+  };
 
   const toggleEmoji = (emoji: string) => {
-    if (emojis.includes(emoji)) {
-      onEmojisChange(emojis.filter((e) => e !== emoji));
-    } else {
-      onEmojisChange([...emojis, emoji]);
-    }
+    onEmojisChange(emojis.includes(emoji) ? emojis.filter((e) => e !== emoji) : [...emojis, emoji]);
   };
+
+  const resetForm = () => {
+    setFormDriver(""); setFormTime(""); setFormDetail("");
+    setFormAllDay(false); setFormDuration(60); setEditingId(null);
+  };
+
+  const startEdit = (ev: CalEvent) => {
+    setEditingId(ev.id); setFormDriver(ev.driver); setFormDetail(ev.detail);
+    setFormAllDay(!ev.time); setFormTime(ev.time || ""); setFormDuration(ev.duration || 60);
+  };
+
+  const saveEvent = () => {
+    if (!formDetail.trim() || !formDriver) return;
+    const ev: CalEvent = {
+      id: editingId || crypto.randomUUID().slice(0, 8),
+      driver: formDriver as "Hon" | "Jay" | "JH", time: formAllDay ? "" : formTime,
+      duration: formAllDay ? undefined : formDuration, detail: formDetail.trim(),
+    };
+    if (editingId) {
+      onEventsChange(events.map((e) => (e.id === editingId ? { ...ev, gcalId: e.gcalId } : e)));
+    } else {
+      onEventsChange([...events, ev]);
+    }
+    resetForm();
+  };
+
+  const removeEvent = (id: string) => {
+    onEventsChange(events.filter((e) => e.id !== id));
+    if (editingId === id) resetForm();
+  };
+
+  const sorted = [...events].sort((a, b) => {
+    if (!a.time && !b.time) return 0;
+    if (!a.time) return -1;
+    if (!b.time) return 1;
+    return a.time.localeCompare(b.time);
+  });
 
   // --- display mode ---
   if (!editMode) {
-    const filled = activeKeys.filter((k) => value[k]);
-    if (filled.length === 0 && emojis.length === 0) {
+    if (events.length === 0 && emojis.length === 0) {
       return <span className="text-[var(--c-text-3)] text-[15px]">—</span>;
     }
     return (
@@ -1192,15 +1347,20 @@ function RemarkCell({
         {emojis.length > 0 && (
           <div className="flex gap-1">{emojis.map((e, i) => <span key={i} className="text-[15px]">{e}</span>)}</div>
         )}
-        {filled.map((k) => {
-          const d = DRIVERS.find((dr) => dr.name === k)!;
+        {sorted.map((ev) => {
+          const d = DRIVERS.find((dr) => dr.name === ev.driver)!;
           return (
-            <div key={k} className="flex items-start gap-1.5">
+            <div key={ev.id} className="flex items-center gap-1.5">
+              {ev.time ? (
+                <span className="text-[11px] text-[var(--c-text-3)] font-mono shrink-0">{ev.time}</span>
+              ) : (
+                <span className="text-[10px] text-[var(--c-text-4)] shrink-0">ALL-DAY</span>
+              )}
               <span className={`shrink-0 px-1.5 py-0.5 rounded-[4px] text-[11px] font-semibold ${d.bg} ${d.color}`}>
                 {d.label}
               </span>
-              <span className="text-[13px] text-[var(--c-text-2)] leading-snug break-words line-clamp-2">
-                {value[k]}
+              <span className="text-[13px] text-[var(--c-text-2)] leading-snug break-words line-clamp-1">
+                {ev.detail}
               </span>
             </div>
           );
@@ -1210,50 +1370,18 @@ function RemarkCell({
   }
 
   // --- edit mode ---
-  const toggle = (k: RKey) => {
-    const next = { ...value };
-    if (k in next) {
-      delete next[k];
-    } else {
-      next[k] = "";
-    }
-    onChange(next);
-  };
+  const isEditingExisting = editingId !== null;
 
   return (
-    <div className="space-y-2">
-      {/* tag + emoji buttons */}
-      <div className="flex gap-2 flex-wrap items-center">
-        {allKeys.map((k) => {
-          const d = DRIVERS.find((dr) => dr.name === k)!;
-          const on = k in value;
-          return (
-            <button
-              key={k}
-              type="button"
-              onClick={() => toggle(k)}
-              className={`${mobile ? "px-3 py-1.5 text-[13px]" : "px-2 py-0.5 text-[11px]"} rounded-[6px] font-semibold transition-all active:scale-95 ${
-                on
-                  ? `${d.bg} ${d.color}`
-                  : "bg-[var(--c-fill-2)] text-[var(--c-text-3)]"
-              }`}
-            >
-              {d.label}
-            </button>
-          );
-        })}
-        <div className="w-px h-4 bg-[var(--c-fill-2)]" />
+    <div className="space-y-2.5">
+      {/* Emoji toggles */}
+      <div className="flex gap-1.5 flex-wrap items-center">
         {REMARK_EMOJIS.map((re) => {
           const on = emojis.includes(re.emoji);
           return (
-            <button
-              key={re.label}
-              type="button"
-              onClick={() => toggleEmoji(re.emoji)}
-              className={`${mobile ? "px-2 py-1" : "px-1.5 py-0.5"} rounded-[6px] text-[15px] transition-all active:scale-95 ${
-                on
-                  ? "bg-[var(--c-fill)] ring-1 ring-[var(--c-sep)]"
-                  : "bg-[var(--c-fill-3)] opacity-40"
+            <button key={re.label} type="button" onClick={() => toggleEmoji(re.emoji)}
+              className={`${mobile ? "px-2.5 py-1.5" : "px-1.5 py-0.5"} rounded-[8px] text-[15px] transition-all active:scale-95 ${
+                on ? "bg-[var(--c-fill)] ring-1 ring-[var(--c-sep)]" : "bg-[var(--c-fill-3)] opacity-40"
               }`}
             >
               <Emoji char={re.emoji} size={15} />
@@ -1261,114 +1389,151 @@ function RemarkCell({
           );
         })}
       </div>
-      {/* per-driver textarea */}
-      {activeKeys.map((k) => {
-        const d = DRIVERS.find((dr) => dr.name === k)!;
-        return (
-          <div key={k} className="flex items-start gap-1.5">
-            <span className={`shrink-0 mt-2 px-1.5 py-0.5 rounded-[4px] text-[11px] font-semibold ${d.bg} ${d.color}`}>
-              {d.label}
-            </span>
-            <textarea
-              rows={2}
-              value={value[k] ?? ""}
-              onChange={(e) => onChange({ ...value, [k]: e.target.value })}
-              placeholder={`${d.label} ทำอะไร...`}
-              className={`flex-1 py-2 px-3 rounded-[10px] bg-[var(--c-input)] text-[15px] placeholder-[var(--c-text-3)] focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/50 border-0 transition-all resize-none leading-snug ${d.color}`}
-            />
+
+      {/* Existing events */}
+      {sorted.length > 0 && (
+        <div className="space-y-1">
+          {sorted.map((ev) => {
+            const d = DRIVERS.find((dr) => dr.name === ev.driver)!;
+            const active = editingId === ev.id;
+            return (
+              <div key={ev.id}
+                onClick={() => { if (!active) startEdit(ev); }}
+                className={`flex items-center gap-1.5 rounded-[8px] py-1.5 px-2 cursor-pointer transition-all ${
+                  active
+                    ? "bg-[var(--c-accent)]/12 ring-1 ring-[var(--c-accent)]/40"
+                    : "bg-[var(--c-fill-3)]/60 hover:bg-[var(--c-fill-2)]"
+                }`}
+              >
+                <span className={`shrink-0 text-[11px] font-mono w-11 ${ev.time ? "text-[var(--c-text-2)]" : "text-[var(--c-text-4)] text-[10px] tracking-tight"}`}>
+                  {ev.time || "All-day"}
+                </span>
+                <span className={`shrink-0 px-1.5 py-0.5 rounded-[5px] text-[11px] font-bold ${d.bg} ${d.color}`}>
+                  {d.label}
+                </span>
+                <span className="text-[13px] text-[var(--c-text)] leading-snug flex-1 truncate font-medium">
+                  {ev.detail}
+                </span>
+                {active && (
+                  <span className="shrink-0 text-[10px] text-[var(--c-accent)] font-medium">editing</span>
+                )}
+                <button type="button" onClick={(e) => { e.stopPropagation(); removeEvent(ev.id); }}
+                  className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-[var(--c-text-4)] hover:text-[#FF453A] hover:bg-[#FF453A]/10 transition-colors active:scale-90"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Event form — add / edit */}
+      <div
+        onClick={() => { if (!formAllDay && !formTime && !isEditingExisting) openTimePicker(); }}
+        className={`rounded-[12px] border overflow-hidden transition-all ${
+          isEditingExisting
+            ? "border-[var(--c-accent)]/30 bg-[var(--c-accent)]/5"
+            : !formAllDay && !formTime
+            ? "border-[var(--c-sep)]/60 bg-[var(--c-fill-3)]/40 cursor-pointer"
+            : "border-[var(--c-sep)]/60 bg-[var(--c-fill-3)]/40"
+        }`}
+      >
+        {/* Form header */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--c-sep)]/40">
+          <span className={`text-[12px] font-semibold tracking-wide ${isEditingExisting ? "text-[var(--c-accent)]" : "text-[var(--c-text-2)]"}`}>
+            {isEditingExisting ? "Edit Event" : !formAllDay && !formTime ? "Tap to pick time" : "New Event"}
+          </span>
+          {isEditingExisting && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); resetForm(); }}
+              className="text-[12px] text-[var(--c-text-3)] hover:text-[var(--c-text)] font-medium transition-colors"
+            >Cancel</button>
+          )}
+        </div>
+
+        <div className="px-3 py-2.5 space-y-2.5" onClick={(e) => e.stopPropagation()}>
+          {/* Row 1: Driver + All-day */}
+          <div className="flex items-center gap-1.5">
+            {DRIVERS.map((d) => (
+              <button key={d.name} type="button"
+                onClick={() => setFormDriver(d.name as "Hon" | "Jay" | "JH")}
+                className={`px-3 py-1.5 text-[12px] rounded-full font-semibold transition-all active:scale-95 ${
+                  formDriver === d.name
+                    ? `${d.bg} ${d.color} ring-1.5 ${d.ring}/60`
+                    : "bg-[var(--c-fill-2)] text-[var(--c-text-3)]"
+                }`}
+              >{d.label}</button>
+            ))}
+            <div className="w-px h-5 bg-[var(--c-sep)]/40 mx-0.5" />
+            <button type="button"
+              onClick={() => { setFormAllDay(!formAllDay); if (!formAllDay) setFormTime(""); }}
+              className={`px-3 py-1.5 text-[12px] rounded-full font-semibold transition-all active:scale-95 ${
+                formAllDay
+                  ? "bg-[var(--c-accent)]/15 text-[var(--c-accent)] ring-1 ring-[var(--c-accent)]/40"
+                  : "bg-[var(--c-fill-2)] text-[var(--c-text-3)]"
+              }`}
+            >All-day</button>
           </div>
-        );
-      })}
+
+          {/* Row 2: Time + Duration (only when not all-day) */}
+          {!formAllDay && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button type="button" onClick={openTimePicker}
+                className={`relative w-[100px] h-[34px] rounded-[8px] text-[14px] font-semibold text-center transition-all active:scale-95 ${
+                  formTime
+                    ? "bg-[var(--c-fill-2)] text-[var(--c-text)]"
+                    : "bg-[var(--c-accent)]/12 text-[var(--c-accent)] ring-1 ring-[var(--c-accent)]/30"
+                }`}
+              >
+                {formTime || "--:--"}
+                <input ref={timeRef} type="time" value={formTime}
+                  onChange={(e) => setFormTime(e.target.value)}
+                  className="absolute inset-0 opacity-0 cursor-pointer [color-scheme:dark]"
+                  tabIndex={-1}
+                />
+              </button>
+              {DURATION_OPTS.map((dp) => (
+                <button key={dp.value} type="button"
+                  onClick={() => setFormDuration(dp.value)}
+                  className={`px-2.5 py-1 text-[11px] rounded-full font-medium transition-all active:scale-95 ${
+                    formDuration === dp.value
+                      ? "bg-[var(--c-text)] text-[var(--c-bg)] shadow-sm"
+                      : "bg-[var(--c-fill-2)] text-[var(--c-text-3)] hover:text-[var(--c-text-2)]"
+                  }`}
+                >{dp.label}</button>
+              ))}
+            </div>
+          )}
+
+          {/* Row 3: Detail + Save */}
+          <div className="flex gap-1.5 items-center">
+            <input type="text" value={formDetail}
+              onChange={(e) => setFormDetail(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveEvent(); } }}
+              placeholder="รายละเอียด..."
+              className="flex-1 min-w-0 py-2 px-3 rounded-[10px] bg-[var(--c-fill-2)] text-[var(--c-text)] text-[14px] placeholder-[var(--c-text-3)] focus:outline-none focus:ring-1.5 focus:ring-[var(--c-accent)]/50 border-0"
+            />
+            <button type="button" onClick={saveEvent} disabled={!formDetail.trim() || !formDriver}
+              className={`shrink-0 h-[36px] px-4 rounded-[10px] text-[13px] font-semibold transition-all active:scale-95 ${
+                formDetail.trim() && formDriver
+                  ? "bg-[var(--c-accent)] text-white shadow-sm"
+                  : "bg-[var(--c-fill-3)] text-[var(--c-text-4)] cursor-not-allowed"
+              }`}
+            >{isEditingExisting ? "Save" : "Add"}</button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-// --- Weather + PM2.5 Dashboard ---
-
-function getWeatherIcon(code: number): string {
-  if (code === 0) return "\u2600\uFE0F"; // ☀️
-  if (code <= 3) return "\u26C5"; // ⛅
-  if (code <= 48) return "\uD83C\uDF2B\uFE0F"; // 🌫️
-  if (code <= 57) return "\uD83C\uDF26\uFE0F"; // 🌦️
-  if (code <= 67) return "\uD83C\uDF27\uFE0F"; // 🌧️
-  if (code <= 77) return "\u2744\uFE0F"; // ❄️
-  if (code <= 82) return "\uD83C\uDF27\uFE0F"; // 🌧️
-  return "\u26C8\uFE0F"; // ⛈️
-}
-
-function getPm25Style(pm25: number): { color: string; bg: string; label: string } {
-  if (pm25 < 0) return { color: "text-[var(--c-text-3)]", bg: "bg-[var(--c-fill-3)]", label: "\u2014" };
-  if (pm25 <= 25) return { color: "text-[#30D158]", bg: "bg-[#30D158]/15", label: "\u0E14\u0E35\u0E21\u0E32\u0E01" };
-  if (pm25 <= 37.5) return { color: "text-[#30D158]", bg: "bg-[#30D158]/10", label: "\u0E14\u0E35" };
-  if (pm25 <= 50) return { color: "text-[#FFD60A]", bg: "bg-[#FFD60A]/15", label: "\u0E1B\u0E32\u0E19\u0E01\u0E25\u0E32\u0E07" };
-  if (pm25 <= 90) return { color: "text-[#FF9F0A]", bg: "bg-[#FF9F0A]/15", label: "\u0E40\u0E23\u0E34\u0E48\u0E21\u0E21\u0E35\u0E1C\u0E25" };
-  if (pm25 <= 120) return { color: "text-[#FF453A]", bg: "bg-[#FF453A]/15", label: "\u0E21\u0E35\u0E1C\u0E25\u0E15\u0E48\u0E2D\u0E2A\u0E38\u0E02\u0E20\u0E32\u0E1E" };
-  return { color: "text-[#BF5AF2]", bg: "bg-[#BF5AF2]/15", label: "\u0E2D\u0E31\u0E19\u0E15\u0E23\u0E32\u0E22" };
-}
-
-function getAqiStyle(aqi: number): { color: string; bg: string; label: string } {
-  if (aqi < 0) return { color: "text-[var(--c-text-3)]", bg: "", label: "" };
-  if (aqi <= 50) return { color: "text-[#30D158]", bg: "bg-[#30D158]/8", label: "Good" };
-  if (aqi <= 100) return { color: "text-[#FFD60A]", bg: "bg-[#FFD60A]/8", label: "Moderate" };
-  if (aqi <= 150) return { color: "text-[#FF9F0A]", bg: "bg-[#FF9F0A]/8", label: "Unhealthy (SG)" };
-  if (aqi <= 200) return { color: "text-[#FF453A]", bg: "bg-[#FF453A]/8", label: "Unhealthy" };
-  if (aqi <= 300) return { color: "text-[#BF5AF2]", bg: "bg-[#BF5AF2]/8", label: "Very Unhealthy" };
-  return { color: "text-[#FF375F]", bg: "bg-[#FF375F]/8", label: "Hazardous" };
-}
+// --- Event Dashboard (Mon-Fri overview) ---
 
 const MINI_DAYS = ["\u0E08", "\u0E2D", "\u0E1E", "\u0E1E\u0E24", "\u0E28"];
 
-function WeatherDashboard({ monday, schedule }: { monday: Date; schedule: ScheduleData }) {
-  const [weatherData, setWeatherData] = useState<WeatherDay[]>([]);
-  const [usAqi, setUsAqi] = useState<number | null>(null);
-  const [aqiSource, setAqiSource] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchData() {
-      try {
-        const [wRes, aqiRes] = await Promise.all([
-          fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${PHRA_PRADAENG.lat}&longitude=${PHRA_PRADAENG.lon}&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_sum&timezone=Asia%2FBangkok&past_days=7&forecast_days=16`
-          ),
-          fetch("/api/air-quality"),
-        ]);
-
-        const w = wRes.ok ? await wRes.json() : null;
-
-        // AQICN US AQI (real station data)
-        if (aqiRes.ok) {
-          const aqi = await aqiRes.json();
-          if (aqi.aqi != null && !cancelled) {
-            setUsAqi(aqi.aqi);
-            setAqiSource(aqi.source || "aqicn");
-          }
-        }
-
-        if (w?.daily) {
-          const days: WeatherDay[] = w.daily.time.map((date: string, i: number) => ({
-            date,
-            tempMax: Math.round(w.daily.temperature_2m_max[i]),
-            tempMin: Math.round(w.daily.temperature_2m_min[i]),
-            weatherCode: w.daily.weather_code?.[i] ?? 0,
-            precipitation: w.daily.precipitation_sum?.[i] ?? 0,
-            humidity: 0,
-            pm25: -1,
-          }));
-          if (!cancelled) setWeatherData(days);
-        }
-      } catch (e) {
-        console.error("Weather fetch failed:", e);
-      }
-      if (!cancelled) setLoading(false);
-    }
-    fetchData();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+function EventDashboard({ monday, getEntry }: { monday: Date; getEntry: (key: string) => ScheduleEntry }) {
   const weekDays = Array.from({ length: 5 }, (_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
@@ -1377,78 +1542,74 @@ function WeatherDashboard({ monday, schedule }: { monday: Date; schedule: Schedu
 
   const today = new Date();
   const isSameDay = (a: Date, b: Date) =>
-    a.getDate() === b.getDate() &&
-    a.getMonth() === b.getMonth() &&
-    a.getFullYear() === b.getFullYear();
-
-  const driverMini = (driver: Driver) => {
-    if (!driver) return null;
-    const cfg = DRIVERS.find((dr) => dr.name === driver);
-    if (!cfg) return null;
-    return (
-      <span className={`font-bold text-[10px] md:text-xs ${cfg.color}`}>{cfg.label}</span>
-    );
-  };
-
-  const aqiStyle = getAqiStyle(usAqi ?? -1);
+    a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
 
   return (
     <div className="mb-5 md:mb-8 rounded-[14px] bg-[var(--c-card)] overflow-hidden">
-      {/* AQI header bar */}
-      {usAqi != null && (
-        <div className={`px-3 py-2 flex items-center justify-between border-b border-[var(--c-sep)]/60 ${aqiStyle.bg}`}>
-          <span className={`text-[11px] md:text-[13px] font-semibold ${aqiStyle.color}`}>
-            US AQI {usAqi} — {aqiStyle.label}
-          </span>
-          <span className="text-[11px] text-[var(--c-text-3)]">
-            {aqiSource === "aqicn" ? "AQICN" : "AirVisual"} · {"\u0E1E\u0E23\u0E30\u0E1B\u0E23\u0E30\u0E41\u0E14\u0E07"}
-          </span>
-        </div>
-      )}
-
       <div className="grid grid-cols-5 divide-x divide-[var(--c-sep)]">
         {weekDays.map((day, i) => {
           const key = formatDateKey(day);
-          const w = weatherData.find((wd) => wd.date === key);
-          const entry = schedule[key];
+          const entry = getEntry(key);
           const todayFlag = isSameDay(day, today);
+          const events = entry.events || [];
+          const sorted = [...events].sort((a, b) => {
+            if (!a.time && !b.time) return 0;
+            if (!a.time) return -1;
+            if (!b.time) return 1;
+            return a.time.localeCompare(b.time);
+          });
 
           return (
-            <div
-              key={i}
-              className={`px-1 py-2.5 md:px-3 md:py-3 text-center ${todayFlag ? "bg-[var(--c-accent)]/8" : ""}`}
-            >
+            <div key={i} className={`px-1 py-2.5 md:px-2 md:py-3 ${todayFlag ? "bg-[var(--c-accent)]/8" : ""}`}>
               {/* Day + Date */}
-              <div className={`text-[11px] md:text-[13px] font-semibold ${todayFlag ? "text-[var(--c-accent)]" : "text-[var(--c-text-2)]"}`}>
+              <div className={`text-[11px] md:text-[13px] font-semibold text-center ${todayFlag ? "text-[var(--c-accent)]" : "text-[var(--c-text-2)]"}`}>
                 {MINI_DAYS[i]} <span className={`font-normal ${todayFlag ? "text-[var(--c-accent)]/70" : "text-[var(--c-text-3)]"}`}>{day.getDate()}/{day.getMonth() + 1}</span>
               </div>
 
-              {/* Weather: temp + icon */}
-              {w ? (
-                <div className="flex items-center justify-center gap-0.5 mt-1.5">
-                  <Emoji char={getWeatherIcon(w.weatherCode)} size={18} />
-                  <span className="text-[13px] md:text-[15px] font-semibold text-[var(--c-text)]">{w.tempMax}{"\u00B0"}</span>
+              {/* Driver summary */}
+              <div className="flex items-center justify-center gap-1 mt-1.5">
+                {entry.morning ? (
+                  <span className={`font-bold text-[10px] ${DRIVERS.find((d) => d.name === entry.morning)?.color || ""}`}>{entry.morning}</span>
+                ) : <span className="text-[var(--c-text-4)] text-[10px]">{"\u2014"}</span>}
+                <span className="text-[var(--c-text-4)] text-[8px]">/</span>
+                {entry.evening ? (
+                  <span className={`font-bold text-[10px] ${DRIVERS.find((d) => d.name === entry.evening)?.color || ""}`}>{entry.evening}</span>
+                ) : <span className="text-[var(--c-text-4)] text-[10px]">{"\u2014"}</span>}
+              </div>
+
+              {/* Emojis */}
+              {entry.emojis && entry.emojis.length > 0 && (
+                <div className="flex items-center justify-center gap-0.5 mt-1">
+                  {entry.emojis.map((e, j) => <Emoji key={j} char={e} size={10} />)}
                 </div>
-              ) : loading ? (
-                <div className="text-[11px] text-[var(--c-text-3)] mt-1.5 animate-pulse">...</div>
-              ) : (
-                <div className="text-[11px] text-[var(--c-text-3)] mt-1.5">{"\u2014"}</div>
               )}
 
-              {/* Divider */}
-              <div className="border-t border-[var(--c-sep)]/40 my-2" />
+              {/* Events */}
+              {sorted.length > 0 && (
+                <div className="mt-1.5 space-y-0.5">
+                  {sorted.slice(0, 3).map((ev) => {
+                    const d = DRIVERS.find((dr) => dr.name === ev.driver);
+                    return (
+                      <div key={ev.id} className="flex items-center gap-0.5 min-w-0">
+                        {ev.time && (
+                          <span className="text-[8px] text-[var(--c-text-4)] font-mono shrink-0">{ev.time}</span>
+                        )}
+                        <span className={`text-[9px] md:text-[10px] leading-tight truncate ${d?.color || "text-[var(--c-text-2)]"}`}>
+                          {ev.detail}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {sorted.length > 3 && (
+                    <span className="text-[8px] text-[var(--c-text-4)]">+{sorted.length - 3} more</span>
+                  )}
+                </div>
+              )}
 
-              {/* Driver summary */}
-              <div className="space-y-0.5">
-                <div className="flex items-center justify-center gap-1">
-                  <Emoji char="☀️" size={10} />
-                  {entry?.morning ? driverMini(entry.morning) : <span className="text-[var(--c-text-4)] text-[10px]">{"\u2014"}</span>}
-                </div>
-                <div className="flex items-center justify-center gap-1">
-                  <Emoji char="🌙" size={10} />
-                  {entry?.evening ? driverMini(entry.evening) : <span className="text-[var(--c-text-4)] text-[10px]">{"\u2014"}</span>}
-                </div>
-              </div>
+              {/* Empty state */}
+              {sorted.length === 0 && !entry.morning && !entry.evening && (!entry.emojis || entry.emojis.length === 0) && (
+                <div className="text-[9px] text-[var(--c-text-4)] text-center mt-1.5">{"\u2014"}</div>
+              )}
             </div>
           );
         })}
