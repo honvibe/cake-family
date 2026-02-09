@@ -92,7 +92,7 @@ export default function SettingsPage() {
               <Emoji char="🔔" size={22} />
               <div>
                 <p className="text-[16px] font-medium text-[var(--c-text)]">LINE Notification</p>
-                <p className="text-[12px] text-[var(--c-text-3)] mt-0.5">ส่งสรุปตารางสัปดาห์ทุกอาทิตย์ 20:00</p>
+                <p className="text-[12px] text-[var(--c-text-3)] mt-0.5">ทุกวัน + สรุปสัปดาห์ทุกอาทิตย์ 20:00</p>
               </div>
             </div>
             <button
