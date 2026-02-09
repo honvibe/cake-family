@@ -153,6 +153,7 @@ export async function GET(req: NextRequest) {
     // Thailand time (UTC+7)
     const now = new Date();
     const thNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    const forceWeekly = req.nextUrl.searchParams.get("weekly") === "1";
     const isSunday = thNow.getUTCDay() === 0;
 
     // Tomorrow
@@ -164,9 +165,14 @@ export async function GET(req: NextRequest) {
     const schedule = (await redis.get("cake-schedule")) as Record<string, ScheduleEntry> | null;
     const sent: string[] = [];
 
-    // Sunday → send weekly overview first
-    if (isSunday) {
-      const monday = tomorrowDate; // tomorrow is Monday
+    // Sunday (or forced) → send weekly overview first
+    if (isSunday || forceWeekly) {
+      // Find next Monday
+      const dow = thNow.getUTCDay();
+      const daysToMon = dow === 0 ? 1 : 8 - dow;
+      const mon = new Date(thNow);
+      mon.setUTCDate(mon.getUTCDate() + daysToMon);
+      const monday = new Date(mon.getUTCFullYear(), mon.getUTCMonth(), mon.getUTCDate());
       const weeklyMsg = buildWeeklyMessage(monday, schedule);
       await sendLine(token, groupId, weeklyMsg);
       sent.push("weekly");
