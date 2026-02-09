@@ -91,8 +91,8 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3">
               <Emoji char="🔔" size={22} />
               <div>
-                <p className="text-[16px] font-medium text-[var(--c-text)]">LINE Notification</p>
-                <p className="text-[12px] text-[var(--c-text-3)] mt-0.5">ทุกวัน + สรุปสัปดาห์ทุกอาทิตย์ 20:00</p>
+                <p className="text-[16px] font-medium text-[var(--c-text)]">แจ้งเตือน LINE</p>
+                <p className="text-[12px] text-[var(--c-text-3)] mt-0.5">ทุกวัน 20:00 + สรุปสัปดาห์อาทิตย์ + เตือน assign เสาร์ 11:00</p>
               </div>
             </div>
             <button

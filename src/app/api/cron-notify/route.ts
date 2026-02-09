@@ -83,6 +83,17 @@ function buildDailyMessage(tomorrow: Date, entry: ScheduleEntry | null): string 
 }
 
 // ── Weekly: compact overview จ-อา ──
+const DAY_PAD: Record<string, string> = {
+  "จ": "จ ", "อ": "อ ", "พ": "พ ", "พฤ": "พฤ", "ศ": "ศ ", "ส": "ส ", "อา": "อา",
+};
+
+function driverTag(name: string): string {
+  if (!name) return "⚪-  ";
+  const emoji = DRIVER_EMOJI[name] || "⚪";
+  // pad JH (2 chars) to match Hon/Jay (3 chars)
+  return `${emoji}${name.padEnd(3)}`;
+}
+
 function buildWeeklyMessage(weekStart: Date, schedule: Record<string, ScheduleEntry> | null): string {
   const endDate = new Date(weekStart);
   endDate.setDate(endDate.getDate() + 6);
@@ -99,13 +110,13 @@ function buildWeeklyMessage(weekStart: Date, schedule: Record<string, ScheduleEn
     const d = new Date(weekStart);
     d.setDate(d.getDate() + i);
     const entry = schedule?.[formatDateKey(d)];
-    const mSq = entry?.morning ? (DRIVER_SQUARE[entry.morning] || "⬜") : "⬜";
-    const eSq = entry?.evening ? (DRIVER_SQUARE[entry.evening] || "⬜") : "⬜";
-    lines.push(`${SHORT_DAYS[i]} ${mSq}${eSq}`);
+    const m = driverTag(entry?.morning || "");
+    const e = driverTag(entry?.evening || "");
+    lines.push(`${DAY_PAD[SHORT_DAYS[i]]} ${m} | ${e}`);
   }
 
   lines.push("─");
-  lines.push("🟨H 🟥J 🟩JH (เช้า|เย็น)");
+  lines.push("(เช้า | เย็น)");
 
   return lines.join("\n");
 }
