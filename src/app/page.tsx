@@ -285,10 +285,16 @@ export default function Home() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updated),
     }).catch(() => {});
-    const saved = editingDay;
+    // Clear pulled events for this date so stale data doesn't re-add deleted events
+    const savedKey = editingDay;
+    setPulledEvents((prev) => {
+      const next = { ...prev };
+      delete next[savedKey];
+      return next;
+    });
     setEditingDay(null);
     setDayDraft(null);
-    setSavedFlash(saved);
+    setSavedFlash(savedKey);
     setTimeout(() => setSavedFlash(null), 1200);
   }, [editingDay, dayDraft, schedule, syncCalendar]);
 
@@ -304,7 +310,14 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updated),
       }).catch(() => {});
-      setSavedFlash(editingDay);
+      // Clear pulled events for saved date
+      const savedKey = editingDay;
+      setPulledEvents((prev) => {
+        const next = { ...prev };
+        delete next[savedKey];
+        return next;
+      });
+      setSavedFlash(savedKey);
       setTimeout(() => setSavedFlash(null), 1200);
     }
     const entry = getEntry(dateKey);
