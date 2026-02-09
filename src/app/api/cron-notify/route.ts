@@ -5,16 +5,17 @@ const redis = Redis.fromEnv();
 
 export const dynamic = "force-dynamic";
 
-const THAI_DAYS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 const THAI_MONTHS_SHORT = [
   "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
   "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
 ];
 
+const SHORT_DAYS = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
+
 interface NotifySettings {
   enabled: boolean;
-  hour: number;
-  minute: number;
+  hour?: number;
+  minute?: number;
 }
 
 interface ScheduleEntry {
@@ -26,6 +27,12 @@ interface ScheduleEntry {
   emojis?: string[];
 }
 
+const DRIVER_SQUARE: Record<string, string> = {
+  Hon: "🟨",
+  Jay: "🟥",
+  JH: "🟩",
+};
+
 function formatDateKey(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -33,108 +40,64 @@ function formatDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-const DRIVER_EMOJI: Record<string, string> = {
-  Hon: "🟡",
-  Jay: "🔴",
-  JH: "🟢",
-};
+function buildWeeklyMessage(weekStart: Date, schedule: Record<string, ScheduleEntry> | null): string {
+  const endDate = new Date(weekStart);
+  endDate.setDate(endDate.getDate() + 6);
 
-const DRIVER_SQUARE: Record<string, string> = {
-  Hon: "🟨",
-  Jay: "🟥",
-  JH: "🟩",
-};
+  const startDay = weekStart.getDate();
+  const endDay = endDate.getDate();
+  const mStart = THAI_MONTHS_SHORT[weekStart.getMonth()];
+  const mEnd = THAI_MONTHS_SHORT[endDate.getMonth()];
 
-function driverLabel(name: string): string {
-  if (!name) return "-";
-  const emoji = DRIVER_EMOJI[name] || "";
-  return emoji ? `${emoji} ${name}` : name;
-}
+  const dateRange = mStart === mEnd
+    ? `${startDay}-${endDay} ${mStart}`
+    : `${startDay} ${mStart} - ${endDay} ${mEnd}`;
 
-function formatMileage(val: string): string {
-  const n = parseInt(val, 10);
-  if (isNaN(n)) return "-";
-  return n.toLocaleString("en-US");
-}
+  const lines: string[] = [`📋 ${dateRange}`];
 
-function buildMessage(tomorrow: Date, entry: ScheduleEntry | null): string {
-  const dayName = THAI_DAYS[tomorrow.getDay()];
-  const day = tomorrow.getDate();
-  const monthName = THAI_MONTHS_SHORT[tomorrow.getMonth()];
-  const year = tomorrow.getFullYear();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    const key = formatDateKey(d);
+    const entry = schedule?.[key];
 
-  const dateLine = `【วัน${dayName} ${day} ${monthName} ${year}】`;
+    const mSq = entry?.morning ? (DRIVER_SQUARE[entry.morning] || "⬜") : "⬜";
+    const eSq = entry?.evening ? (DRIVER_SQUARE[entry.evening] || "⬜") : "⬜";
 
-  const morning = driverLabel(entry?.morning || "");
-  const evening = driverLabel(entry?.evening || "");
-  const fuel = entry?.fuel || "-";
-  const mileage = entry?.mileage ? formatMileage(entry.mileage) : "-";
-
-  const lines: string[] = [
-    dateLine,
-    "----------",
-    `ไปส่ง เช้า: ${morning} | ไปรับ เย็น: ${evening}`,
-    "----------",
-    `เติมน้ำมัน: ${fuel !== "-" && fuel ? fuel + " ลิตร" : "-"}`,
-    `เลขไมล์: ${mileage}`,
-    "----------",
-  ];
-
-  // Remarks section
-  const hasEmojis = entry?.emojis && entry.emojis.length > 0;
-  const hasRemarks = entry?.remarks && Object.values(entry.remarks).some((v) => v);
-
-  if (hasEmojis || hasRemarks) {
-    lines.push("Remark");
-    if (hasEmojis) {
-      lines.push(entry!.emojis!.join(" "));
-    }
-    if (hasRemarks) {
-      for (const [driver, note] of Object.entries(entry!.remarks)) {
-        if (note) {
-          const sq = DRIVER_SQUARE[driver] || "";
-          lines.push(`${sq} ${driver}: ${note}`);
-        }
-      }
-    }
+    lines.push(`${SHORT_DAYS[i]} ${mSq}${eSq}`);
   }
+
+  lines.push("─");
+  lines.push("🟨H 🟥J 🟩JH (เช้า|เย็น)");
 
   return lines.join("\n");
 }
 
 export async function GET(req: NextRequest) {
   try {
-    // Verify cron secret (Vercel sets Authorization header)
     const authHeader = req.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
     if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 1. Read settings
     const settings = (await redis.get("cake-notify-settings")) as NotifySettings | null;
     if (!settings?.enabled) {
       return NextResponse.json({ status: "skipped", reason: "disabled" });
     }
 
-    // 2. Calculate tomorrow in Thailand timezone (UTC+7)
+    // Calculate upcoming Monday in Thailand timezone (UTC+7)
     const now = new Date();
     const thNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-    const tomorrow = new Date(thNow);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-    const dateKey = formatDateKey(
-      new Date(tomorrow.getUTCFullYear(), tomorrow.getUTCMonth(), tomorrow.getUTCDate())
-    );
+    const dayOfWeek = thNow.getUTCDay(); // 0=Sun
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+    const monday = new Date(thNow);
+    monday.setUTCDate(monday.getUTCDate() + daysUntilMonday);
+    const weekStart = new Date(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate());
 
-    // 3. Read schedule
     const schedule = (await redis.get("cake-schedule")) as Record<string, ScheduleEntry> | null;
-    const entry = schedule?.[dateKey] || null;
+    const message = buildWeeklyMessage(weekStart, schedule);
 
-    // 4. Format message
-    const tomorrowDate = new Date(tomorrow.getUTCFullYear(), tomorrow.getUTCMonth(), tomorrow.getUTCDate());
-    const message = buildMessage(tomorrowDate, entry);
-
-    // 5. Send to LINE
     const token = process.env.LINE_CHANNEL_TOKEN;
     const groupId = process.env.LINE_GROUP_ID;
 
@@ -160,7 +123,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "LINE API error", detail: err }, { status: 500 });
     }
 
-    return NextResponse.json({ status: "sent", dateKey, message });
+    return NextResponse.json({ status: "sent", message });
   } catch (e) {
     console.error("[cron-notify] Error:", e);
     return NextResponse.json({ error: String(e) }, { status: 500 });

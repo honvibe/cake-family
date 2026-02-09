@@ -12,14 +12,6 @@ interface NotifySettings {
 
 const DEFAULT_SETTINGS: NotifySettings = { enabled: false, hour: 20, minute: 0 };
 
-const TIME_OPTIONS = [
-  { hour: 17, label: "17:00" },
-  { hour: 18, label: "18:00" },
-  { hour: 19, label: "19:00" },
-  { hour: 20, label: "20:00" },
-  { hour: 21, label: "21:00" },
-  { hour: 22, label: "22:00" },
-];
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<NotifySettings>(DEFAULT_SETTINGS);
@@ -100,7 +92,7 @@ export default function SettingsPage() {
               <Emoji char="🔔" size={22} />
               <div>
                 <p className="text-[16px] font-medium text-[var(--c-text)]">LINE Notification</p>
-                <p className="text-[12px] text-[var(--c-text-3)] mt-0.5">ส่งสรุปตารางวันถัดไปเข้ากลุ่ม</p>
+                <p className="text-[12px] text-[var(--c-text-3)] mt-0.5">ส่งสรุปตารางสัปดาห์ทุกอาทิตย์ 20:00</p>
               </div>
             </div>
             <button
@@ -117,37 +109,6 @@ export default function SettingsPage() {
             </button>
           </div>
 
-          {/* Divider */}
-          <div className="mx-5 border-t border-[var(--c-sep)]" />
-
-          {/* Row 2: Time selector (visible when enabled) */}
-          <div className={`px-5 py-4 transition-opacity duration-200 ${settings.enabled ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Emoji char="⏰" size={22} />
-                <div>
-                  <p className="text-[16px] font-medium text-[var(--c-text)]">เวลาแจ้งเตือน</p>
-                  <p className="text-[12px] text-[var(--c-text-3)] mt-0.5">แจ้งล่วงหน้าคืนก่อนวันถัดไป</p>
-                </div>
-              </div>
-              <select
-                value={settings.hour}
-                onChange={(e) => setSettings({ ...settings, hour: Number(e.target.value) })}
-                className="appearance-none bg-[var(--c-fill-2)] text-[var(--c-text)] text-[15px] font-medium px-3 py-2 pr-8 rounded-[10px] border border-[var(--c-sep)] outline-none cursor-pointer"
-                style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right 8px center",
-                }}
-              >
-                {TIME_OPTIONS.map((opt) => (
-                  <option key={opt.hour} value={opt.hour}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
         </div>
 
         {/* Save Button */}
