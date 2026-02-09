@@ -1,0 +1,359 @@
+"use client";
+
+import MainNavigationShell from "@/components/main-navigation-shell";
+import HotelCard from "@/components/hotel-card";
+import Link from "next/link";
+import { useState } from "react";
+
+type TabId = "plan" | "baggage" | "highlights";
+
+const TABS: { id: TabId; label: string; icon: string }[] = [
+  { id: "plan", label: "Plan", icon: "📋" },
+  { id: "baggage", label: "Baggage", icon: "🧳" },
+  { id: "highlights", label: "สิ่งที่น่าสนใจ", icon: "✨" },
+];
+
+const DAYS = [
+  "Sun. 1 Mar", "Mon. 2 Mar", "Tue. 3 Mar", "Wed. 4 Mar",
+  "Thu. 5 Mar", "Fri. 6 Mar", "Sat. 7 Mar", "Sun. 8 Mar",
+];
+
+const HOTEL = {
+  name: "MONday Apart Asakusabashi Akihabara",
+  rating: "4.0 stars rating out of five",
+  addressEn: "4-15-5 Asakusabashi Taito-Ku Tokyo Japan, Tokyo, Japan, 111-0053",
+  addressJp: "東京都台東区浅草橋4-15-5, 東京, 日本, 111-0053",
+  checkIn: "Sunday March 1, 2026 (after 3:00 PM)",
+  checkOut: "Sunday March 8, 2026 (before 10:00 AM)",
+};
+
+// --- Food Guide Data ---
+interface Restaurant {
+  name: string;
+  highlight: string;
+  mapUrl: string;
+}
+
+interface Zone {
+  name: string;
+  color: string;
+  bg: string;
+  border: string;
+  shops: Restaurant[];
+}
+
+const ZONES: Zone[] = [
+  {
+    name: "Sengoku",
+    color: "text-[#F5B731]",
+    bg: "bg-[#F5B731]/10",
+    border: "border-[#F5B731]/30",
+    shops: [
+      { name: "Kisaburo Nojo", highlight: "บุฟเฟ่ต์ไข่ดิบหลากสายพันธุ์ ทานคู่กับข้าวสวย", mapUrl: "https://www.google.com/maps/search/?api=1&query=Kisaburo+Nojo+Sengoku" },
+    ],
+  },
+  {
+    name: "Shibuya",
+    color: "text-[#FF6482]",
+    bg: "bg-[#FF6482]/10",
+    border: "border-[#FF6482]/30",
+    shops: [
+      { name: "Butter Premium Junk", highlight: "แพนเค้ก 3 ชิ้นโต พร้อมเนยก้อน 100 กรัม", mapUrl: "https://www.google.com/maps/search/?api=1&query=Butter+Premium+Junk+Shibuya" },
+      { name: "Kitchen Hasegawa", highlight: "ออมเล็ตแฮมเบิร์ก กรีดไข่โชว์ที่โต๊ะ", mapUrl: "https://www.google.com/maps/search/?api=1&query=Kitchen+Hasegawa+Shibuya" },
+      { name: "Hikiniku to Kome", highlight: "แฮมเบิร์ก 3 ชิ้น ย่างเตาถ่าน ข้าวเติมได้", mapUrl: "https://www.google.com/maps/search/?api=1&query=Hikiniku+to+Kome+Shibuya" },
+      { name: "I'm donut?", highlight: "โดนัทแป้งเหนียวนุ่มหนึบ คิวยาวมาก", mapUrl: "https://www.google.com/maps/search/?api=1&query=I'm+donut+Shibuya" },
+      { name: "Mo-Mo-Paradise", highlight: "บุฟเฟ่ต์วากิว A5 ไม่อั้น (ประมาณ 8,000 เยน)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Mo-Mo+Paradise+Shibuya+Udagawacho" },
+      { name: "Kobe Beef Ittetsu", highlight: "วากิวเสียบไม้ และข้าวหน้าเนื้อโกเบ", mapUrl: "https://www.google.com/maps/search/?api=1&query=Kobe+Beef+Ittetsu+Shibuya" },
+    ],
+  },
+  {
+    name: "Tsukiji",
+    color: "text-[#64D2FF]",
+    bg: "bg-[#64D2FF]/10",
+    border: "border-[#64D2FF]/30",
+    shops: [
+      { name: "Unitora Nakadori", highlight: "ข้าวหน้าอูนิ 6 สายพันธุ์ (ชามละ 20,000 เยน)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Unitora+Nakadori+Tsukiji" },
+      { name: "Gyu (Wagyu & Crab)", highlight: "เนื้อย่างวากิว A5 ท็อปอูนิและขาปูยักษ์", mapUrl: "https://www.google.com/maps/search/?api=1&query=Gyu+Wagyu+Beef+Tsukiji" },
+      { name: "Tsukiji Soratsuki", highlight: "สตรอว์เบอร์รีเคลือบน้ำตาลและไดฟูกุ", mapUrl: "https://www.google.com/maps/search/?api=1&query=Tsukiji+Soratsuki" },
+      { name: "Yamacho", highlight: "ไข่ม้วนญี่ปุ่น (ไข่หวาน) ไม้ละ 200 เยน", mapUrl: "https://www.google.com/maps/search/?api=1&query=Tsukiji+Yamacho" },
+      { name: "Matcha Stand Maruni", highlight: "มัทฉะลาเต้และพรีเมียมมัทฉะเข้มข้น", mapUrl: "https://www.google.com/maps/search/?api=1&query=Matcha+Stand+Maruni" },
+      { name: "Tsukiji Ichiba Senbei", highlight: "ข้าวเกรียบเซมเบ้แผ่นยักษ์ใส่หมึก/กุ้ง", mapUrl: "https://www.google.com/maps/search/?api=1&query=Tsukiji+Ichiba+Senbei" },
+      { name: "Marutake", highlight: "ไข่ม้วนเจ้าดังอีกหนึ่งร้านในตลาด", mapUrl: "https://www.google.com/maps/search/?api=1&query=Marutake+Tsukiji" },
+    ],
+  },
+  {
+    name: "Harajuku",
+    color: "text-[#BF5AF2]",
+    bg: "bg-[#BF5AF2]/10",
+    border: "border-[#BF5AF2]/30",
+    shops: [
+      { name: "Kuma no Te Cafe", highlight: "คาเฟ่มือหมีส่งน้ำผ่านรู น่ารักมาก", mapUrl: "https://www.google.com/maps/search/?api=1&query=Kuma+no+Te+Cafe+Harajuku" },
+      { name: "Afuri Ramen", highlight: "ราเมงซุปยูสุ หอม สดชื่น", mapUrl: "https://www.google.com/maps/search/?api=1&query=Afuri+Ramen+Harajuku" },
+      { name: "Tabanenoshi", highlight: "เครปเย็นแป้งหนานุ่ม ไส้มันหวาน/ทีรามิสุ", mapUrl: "https://www.google.com/maps/search/?api=1&query=Tabanenoshi+Harajuku" },
+    ],
+  },
+  {
+    name: "Ginza",
+    color: "text-[#FFD60A]",
+    bg: "bg-[#FFD60A]/10",
+    border: "border-[#FFD60A]/30",
+    shops: [
+      { name: "Sushi no Midori", highlight: "ซูชิคุณภาพดี ราคาไม่แพง คิวยาว", mapUrl: "https://www.google.com/maps/search/?api=1&query=Sushi+no+Midori+Ginza" },
+      { name: "Age.3", highlight: "แซนด์วิชทอด ไส้ทะลักทั้งคาวและหวาน", mapUrl: "https://www.google.com/maps/search/?api=1&query=Age.3+Ginza" },
+      { name: "Ginza Kimuraya", highlight: "ขนมปังถั่วแดงร้านเก่าแก่กว่า 150 ปี", mapUrl: "https://www.google.com/maps/search/?api=1&query=Ginza+Kimuraya" },
+    ],
+  },
+  {
+    name: "Asakusa",
+    color: "text-[#FF453A]",
+    bg: "bg-[#FF453A]/10",
+    border: "border-[#FF453A]/30",
+    shops: [
+      { name: "Hatcoffee", highlight: "ลาเต้อาร์ตฟองนม 3D ตามสั่ง", mapUrl: "https://www.google.com/maps/search/?api=1&query=Hatcoffee+Asakusa" },
+      { name: "Tonkatsu Hasegawa", highlight: "ทงคัตสึหมูทอดชิ้นหนานุ่ม ข้าวเติมได้", mapUrl: "https://www.google.com/maps/search/?api=1&query=Tonkatsu+Hasegawa+Asakusa" },
+      { name: "Asakusa Naniwaya", highlight: "คากิโกริ (น้ำแข็งไส) สตรอว์เบอร์รี/มัทฉะ", mapUrl: "https://www.google.com/maps/search/?api=1&query=Asakusa+Naniwaya" },
+    ],
+  },
+  {
+    name: "Ueno",
+    color: "text-[#30D158]",
+    bg: "bg-[#30D158]/10",
+    border: "border-[#30D158]/30",
+    shops: [
+      { name: "Miura-misaki-kou", highlight: "ซูชิสายพานหน้าล้น เครื่องพูนจัดเต็ม", mapUrl: "https://www.google.com/maps/search/?api=1&query=Miura-misaki-kou+Ueno" },
+      { name: "Gyukatsu Motomura", highlight: "เนื้อวากิวชุบแป้งทอด ย่างเพิ่มเองได้", mapUrl: "https://www.google.com/maps/search/?api=1&query=Gyukatsu+Motomura+Ueno" },
+      { name: "Ichiran Ramen", highlight: "ราเมงข้อสอบ สาขาหน้าสถานีอุเอโนะ", mapUrl: "https://www.google.com/maps/search/?api=1&query=Ichiran+Ramen+Ueno" },
+      { name: "Yakiniku Ponga", highlight: "บุฟเฟ่ต์ยากินิกุพรีเมียม (6,000 เยน)", mapUrl: "https://www.google.com/maps/search/?api=1&query=Yakiniku+Ponga+Ueno" },
+      { name: "Dipper Dan Crepe", highlight: "เครปเย็นสตรอว์เบอร์รีมัทฉะ", mapUrl: "https://www.google.com/maps/search/?api=1&query=Dipper+Dan+Ueno" },
+      { name: "Menya Musashi", highlight: "ราเมงต้มยำรสชาติจัดจ้าน", mapUrl: "https://www.google.com/maps/search/?api=1&query=Menya+Musashi+Ueno" },
+      { name: "Domremy Outlet", highlight: "ร้านขนมราคาถูก แยมโรลและพุดดิ้ง", mapUrl: "https://www.google.com/maps/search/?api=1&query=Domremy+Outlet+Ueno" },
+    ],
+  },
+  {
+    name: "Yanaka",
+    color: "text-[#FF9F0A]",
+    bg: "bg-[#FF9F0A]/10",
+    border: "border-[#FF9F0A]/30",
+    shops: [
+      { name: "Yanaka Senbei", highlight: "เซมเบ้แป้งข้าวทอดหลากรส", mapUrl: "https://www.google.com/maps/search/?api=1&query=Yanaka+Senbei" },
+      { name: "Echigoya Wakasa", highlight: "โมจิเหนียวนุ่ม ทานคู่มัทฉะร้อน", mapUrl: "https://www.google.com/maps/search/?api=1&query=Echigoya+Wakasa" },
+      { name: "Waguriya", highlight: "มองบังเกาลัดธรรมชาติ รสชาติเข้มข้น", mapUrl: "https://www.google.com/maps/search/?api=1&query=Waguriya+Yanaka" },
+      { name: "Niku no Suzuki", highlight: "เมนจิคัตสึ (เนื้อบดทอด) คิวยาว", mapUrl: "https://www.google.com/maps/search/?api=1&query=Niku+no+Suzuki+Yanaka" },
+    ],
+  },
+  {
+    name: "Hongo",
+    color: "text-[#5E5CE6]",
+    bg: "bg-[#5E5CE6]/10",
+    border: "border-[#5E5CE6]/30",
+    shops: [
+      { name: "Yakiniku Jumbo", highlight: "ยากินิกุพรีเมียม ข้าวผัดวากิวทีเด็ด", mapUrl: "https://www.google.com/maps/search/?api=1&query=Yakiniku+Jumbo+Hongo" },
+    ],
+  },
+];
+
+const TOTAL_SHOPS = ZONES.reduce((sum, z) => sum + z.shops.length, 0);
+
+type HighlightSubTab = "food" | "shopping";
+
+const HIGHLIGHT_SUBS: { id: HighlightSubTab; label: string }[] = [
+  { id: "food", label: "ร้านอาหาร" },
+  { id: "shopping", label: "ช้อปปิ้ง" },
+];
+
+export default function Tokyo2026Page() {
+  const [activeTab, setActiveTab] = useState<TabId>("plan");
+  const [expandedZone, setExpandedZone] = useState<string | null>(null);
+  const [highlightSub, setHighlightSub] = useState<HighlightSubTab>("food");
+
+  return (
+    <MainNavigationShell>
+      <div className="w-full max-w-[1200px] mx-auto">
+        {/* Header */}
+        <div className="mb-5 md:mb-6">
+          <p className="text-[24px] md:text-[34px] font-bold text-[var(--c-text)] tracking-tight">
+            Tokyo 2026
+          </p>
+          <p className="text-[14px] text-[var(--c-text-2)] mt-1">1 - 8 Mar 2026</p>
+        </div>
+
+        {/* Tab Bar */}
+        <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1 -mx-1 px-1">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
+                activeTab === tab.id
+                  ? "bg-[var(--c-accent)] text-white"
+                  : "bg-[var(--c-fill-2)] text-[var(--c-text-2)] hover:bg-[var(--c-fill)]"
+              }`}
+            >
+              <span className="text-[15px]">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ======== Plan Tab ======== */}
+        {activeTab === "plan" && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-4 md:grid-cols-8 gap-2.5 md:gap-3">
+              {DAYS.map((label, i) => (
+                <Link
+                  key={label}
+                  href={`/travel/tokyo2026/day-${i + 1}`}
+                  className="rounded-[14px] border border-[var(--c-sep)] bg-[var(--c-card)] px-3 py-3 text-center text-[var(--c-text)] hover:bg-[var(--c-fill-3)] transition-all"
+                >
+                  <div className="text-[13px] font-semibold leading-tight">{label}</div>
+                </Link>
+              ))}
+            </div>
+
+            <HotelCard hotel={HOTEL} />
+
+            <div>
+              <p className="text-[16px] font-semibold text-[var(--c-text)]">รายละเอียดแผนรายวัน</p>
+              <p className="text-[13px] text-[var(--c-text-2)] mt-1">เลือกวันด้านบนเพื่อดูไทม์ไลน์รายวัน</p>
+            </div>
+          </div>
+        )}
+
+        {/* ======== Baggage Tab ======== */}
+        {activeTab === "baggage" && (
+          <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-6">
+            <p className="text-[16px] font-semibold text-[var(--c-text)]">Baggage Checklist</p>
+            <p className="text-[13px] text-[var(--c-text-2)] mt-1">
+              สามารถเพิ่มรายการสิ่งของที่ต้องเตรียมได้ต่อทันที
+            </p>
+          </div>
+        )}
+
+        {/* ======== Highlights Tab ======== */}
+        {activeTab === "highlights" && (
+          <div className="space-y-5">
+            {/* Sub-tab bar */}
+            <div className="flex gap-1 border-b border-[var(--c-sep)] -mb-1">
+              {HIGHLIGHT_SUBS.map((sub) => (
+                <button
+                  key={sub.id}
+                  onClick={() => setHighlightSub(sub.id)}
+                  className={`px-4 py-2.5 text-[14px] font-medium border-b-2 transition-all ${
+                    highlightSub === sub.id
+                      ? "border-[var(--c-accent)] text-[var(--c-accent)]"
+                      : "border-transparent text-[var(--c-text-2)] hover:text-[var(--c-text)]"
+                  }`}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </div>
+
+            {/* --- Food sub-tab --- */}
+            {highlightSub === "food" && (
+              <div className="space-y-5">
+                <div className="rounded-[18px] border border-[var(--c-accent)]/40 bg-[var(--c-accent-bg)] p-5 md:p-7">
+                  <p className="text-[22px] md:text-[28px] font-bold text-[var(--c-text)] leading-tight">
+                    ตะลุยกิน Tokyo
+                  </p>
+                  <p className="text-[14px] text-[var(--c-text-2)] mt-1">
+                    4 วัน {TOTAL_SHOPS} ร้าน · {ZONES.length} โซน
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {ZONES.map((zone) => (
+                      <button
+                        key={zone.name}
+                        onClick={() => {
+                          setExpandedZone(expandedZone === zone.name ? null : zone.name);
+                          setTimeout(() => {
+                            document.getElementById(`zone-${zone.name}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }, 100);
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${zone.bg} ${zone.color} border ${zone.border}`}
+                      >
+                        {zone.name} · {zone.shops.length}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {ZONES.map((zone) => (
+                  <div
+                    key={zone.name}
+                    id={`zone-${zone.name}`}
+                    className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] overflow-hidden"
+                  >
+                    <button
+                      onClick={() => setExpandedZone(expandedZone === zone.name ? null : zone.name)}
+                      className="w-full flex items-center justify-between gap-3 px-5 py-4 hover:bg-[var(--c-fill-3)] transition-colors active:bg-[var(--c-fill-2)]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={`px-3 py-1 rounded-full text-[13px] font-bold ${zone.bg} ${zone.color} border ${zone.border}`}>
+                          {zone.name}
+                        </span>
+                        <span className="text-[13px] text-[var(--c-text-2)]">
+                          {zone.shops.length} ร้าน
+                        </span>
+                      </div>
+                      <svg
+                        className={`w-[14px] h-[14px] text-[var(--c-text-3)] shrink-0 transition-transform duration-200 ${
+                          expandedZone === zone.name ? "rotate-180" : ""
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2.5}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {expandedZone === zone.name && (
+                      <div className="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {zone.shops.map((shop) => (
+                          <div
+                            key={shop.name}
+                            className={`rounded-[14px] border ${zone.border} ${zone.bg} p-4 flex items-start justify-between gap-3`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-[16px] font-semibold ${zone.color} leading-tight`}>
+                                {shop.name}
+                              </p>
+                              <p className="text-[13px] text-[var(--c-text-2)] mt-1">{shop.highlight}</p>
+                            </div>
+                            <a
+                              href={shop.mapUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-[var(--c-accent)] text-white hover:brightness-110 active:scale-95 transition-all"
+                              title="เปิดใน Google Maps"
+                            >
+                              <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                              </svg>
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* --- Shopping sub-tab --- */}
+            {highlightSub === "shopping" && (
+              <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-6">
+                <p className="text-[16px] font-semibold text-[var(--c-text)]">โซนช้อปปิ้ง</p>
+                <p className="text-[13px] text-[var(--c-text-2)] mt-1">
+                  สามารถเพิ่มข้อมูลแหล่งช้อปปิ้งได้ต่อทันที
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </MainNavigationShell>
+  );
+}

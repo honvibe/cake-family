@@ -1,65 +1,1458 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, useCallback, FormEvent } from "react";
+import Link from "next/link";
+import { Emoji } from "@/components/emoji";
+
+const PASS_HASH = "bb5cdcc387ba6d03de464d72a6e0a9464b002821dad2cd76d4718b82d878c009";
+
+async function hashPassphrase(pass: string): Promise<string> {
+  const encoded = new TextEncoder().encode(pass);
+  const buf = await crypto.subtle.digest("SHA-256", encoded);
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function getAuthCookie(): boolean {
+  return document.cookie.split(";").some((c) => c.trim().startsWith("cake_auth=1"));
+}
+
+function setAuthCookie() {
+  const expires = new Date(Date.now() + 365 * 10 * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `cake_auth=1; expires=${expires}; path=/; SameSite=Lax`;
+}
+
+type Driver = "Hon" | "Jay" | "JH" | "";
+type TimeSlot = "morning" | "evening";
+type TabId = "schedule" | "price" | "travel";
+
+type DriverRemarks = Partial<Record<"Hon" | "Jay" | "JH", string>>;
+
+interface ScheduleEntry {
+  morning: Driver;
+  evening: Driver;
+  fuel: string;
+  mileage: string;
+  remarks: DriverRemarks;
+  emojis?: string[];
+  /** @deprecated old format, migrated to remarks */
+  remark?: string;
+}
+
+type ScheduleData = Record<string, ScheduleEntry>;
+
+const DRIVERS: { name: Driver; label: string; color: string; bg: string; border: string; ring: string }[] = [
+  { name: "Hon", label: "Hon", color: "text-[#F5B731]", bg: "bg-[#F5B731]/15", border: "border-[#F5B731]/40", ring: "ring-[#F5B731]" },
+  { name: "Jay", label: "Jay", color: "text-[#FF6482]", bg: "bg-[#FF6482]/15", border: "border-[#FF6482]/40", ring: "ring-[#FF6482]" },
+  { name: "JH", label: "JH", color: "text-[#5ED4A5]", bg: "bg-[#5ED4A5]/15", border: "border-[#5ED4A5]/40", ring: "ring-[#5ED4A5]" },
+];
+
+const THAI_DAYS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+const THAI_MONTHS = [
+  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
+];
+
+function getMonday(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function formatDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function getWeekDays(monday: Date): Date[] {
+  const days: Date[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+function getDriverStyle(driver: Driver) {
+  const d = DRIVERS.find((dr) => dr.name === driver);
+  if (!d) return { bg: "bg-[var(--c-fill-3)]", color: "text-[var(--c-text-3)]", border: "border-[var(--c-sep)]" };
+  return { bg: d.bg, color: d.color, border: d.border };
+}
+
+// --- Weather + PM2.5 Dashboard ---
+const PHRA_PRADAENG = { lat: 13.66, lon: 100.53 };
+
+interface WeatherDay {
+  date: string;
+  tempMax: number;
+  tempMin: number;
+  weatherCode: number;
+  precipitation: number;
+  humidity: number;
+  pm25: number;
+}
 
 export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+  const [currentMonday, setCurrentMonday] = useState<Date>(() => {
+    const feb2 = new Date(2026, 1, 2);
+    return getMonday(feb2);
+  });
+  const [schedule, setSchedule] = useState<ScheduleData>({});
+  const [editingDay, setEditingDay] = useState<string | null>(null);
+  const [dayDraft, setDayDraft] = useState<ScheduleEntry | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [authed, setAuthed] = useState(false);
+  const [passInput, setPassInput] = useState("");
+  const [passError, setPassError] = useState(false);
+  const [forgotConfirm, setForgotConfirm] = useState(false);
+  const [forgotStatus, setForgotStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [activeTab, setActiveTab] = useState<TabId>("schedule");
+  const [selectedTravelDay, setSelectedTravelDay] = useState(1);
+  const [travelDetailOpen, setTravelDetailOpen] = useState(true);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setAuthed(getAuthCookie());
+    setMounted(true);
+    const saved = (typeof window !== "undefined" ? localStorage.getItem("ui-theme") : null) as "dark" | "light" | null;
+    const next = saved === "light" ? "light" : "dark";
+    setTheme(next);
+    document.documentElement.classList.toggle("dark", next === "dark");
+  }, []);
+
+  // Load schedule from server
+  useEffect(() => {
+    if (!authed) return;
+    fetch("/api/schedule")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && !data.error) setSchedule(data);
+      })
+      .catch(() => {});
+  }, [authed]);
+
+  const weekDays = getWeekDays(currentMonday);
+
+  const getEntry = useCallback(
+    (dateKey: string): ScheduleEntry => {
+      if (editingDay === dateKey && dayDraft) {
+        return dayDraft;
+      }
+      return schedule[dateKey] || { morning: "", evening: "", fuel: "", mileage: "", remarks: {} };
+    },
+    [editingDay, dayDraft, schedule]
+  );
+
+  const [savedFlash, setSavedFlash] = useState<string | null>(null);
+
+  const saveDay = useCallback(() => {
+    if (!editingDay || !dayDraft) return;
+    const updated = { ...schedule, [editingDay]: dayDraft };
+    setSchedule(updated);
+    fetch("/api/schedule", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updated),
+    }).catch(() => {});
+    const saved = editingDay;
+    setEditingDay(null);
+    setDayDraft(null);
+    setSavedFlash(saved);
+    setTimeout(() => setSavedFlash(null), 1200);
+  }, [editingDay, dayDraft, schedule]);
+
+  const startEditing = (dateKey: string) => {
+    if (editingDay === dateKey) return; // already editing this day — do nothing
+    // If editing another day, auto-save first
+    if (editingDay && dayDraft) {
+      const updated = { ...schedule, [editingDay]: dayDraft };
+      setSchedule(updated);
+      fetch("/api/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      }).catch(() => {});
+      setSavedFlash(editingDay);
+      setTimeout(() => setSavedFlash(null), 1200);
+    }
+    const entry = schedule[dateKey] || { morning: "", evening: "", fuel: "", mileage: "", remarks: {} };
+    setEditingDay(dateKey);
+    setDayDraft({ ...entry });
+  };
+
+  const cancelEdit = () => {
+    setEditingDay(null);
+    setDayDraft(null);
+  };
+
+  const handleDriverSelect = (dateKey: string, slot: TimeSlot, driver: Driver) => {
+    if (editingDay !== dateKey || !dayDraft) return;
+    setDayDraft({ ...dayDraft, [slot]: dayDraft[slot] === driver ? "" : driver });
+  };
+
+  const handleFuelChange = (dateKey: string, value: string) => {
+    if (editingDay !== dateKey || !dayDraft) return;
+    setDayDraft({ ...dayDraft, fuel: value });
+  };
+
+  const handleMileageChange = (dateKey: string, value: string) => {
+    if (editingDay !== dateKey || !dayDraft) return;
+    setDayDraft({ ...dayDraft, mileage: value });
+  };
+
+  const getMaxMileage = useCallback((): number => {
+    let max = 0;
+    for (const entry of Object.values(schedule)) {
+      const val = parseFloat(entry.mileage);
+      if (!isNaN(val) && val > max) max = val;
+    }
+    return max;
+  }, [schedule]);
+
+  const handleRemarksChange = (dateKey: string, newRemarks: DriverRemarks) => {
+    if (editingDay !== dateKey || !dayDraft) return;
+    setDayDraft({ ...dayDraft, remarks: newRemarks });
+  };
+
+  const handleEmojisChange = (dateKey: string, emojis: string[]) => {
+    if (editingDay !== dateKey || !dayDraft) return;
+    setDayDraft({ ...dayDraft, emojis });
+  };
+
+  const navigateWeek = (direction: number) => {
+    setCurrentMonday((prev) => {
+      const next = new Date(prev);
+      next.setDate(prev.getDate() + 7 * direction);
+      return next;
+    });
+  };
+
+  const goToCurrentWeek = () => {
+    setCurrentMonday(getMonday(new Date()));
+  };
+
+  const weekRange = () => {
+    const first = weekDays[0];
+    const last = weekDays[6];
+    if (first.getMonth() === last.getMonth()) {
+      return `${first.getDate()} - ${last.getDate()} ${THAI_MONTHS[first.getMonth()]} ${first.getFullYear()}`;
+    }
+    return `${first.getDate()} ${THAI_MONTHS[first.getMonth()]} - ${last.getDate()} ${THAI_MONTHS[last.getMonth()]} ${first.getFullYear()}`;
+  };
+
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
+  const handleLogin = async (e: FormEvent) => {
+    e.preventDefault();
+    const h = await hashPassphrase(passInput);
+    if (h === PASS_HASH) {
+      setAuthCookie();
+      setAuthed(true);
+      setPassError(false);
+    } else {
+      setPassError(true);
+    }
+  };
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--c-bg)]">
+        <div className="animate-pulse text-[var(--c-text-3)] text-[17px]">Loading...</div>
+      </div>
+    );
+  }
+
+  const handleForgotSend = async () => {
+    setForgotStatus("sending");
+    try {
+      const res = await fetch("/api/forgot-pass", { method: "POST" });
+      if (res.ok) {
+        setForgotStatus("sent");
+      } else {
+        setForgotStatus("error");
+      }
+    } catch {
+      setForgotStatus("error");
+    }
+  };
+
+  // Auth login form — rendered inline inside schedule tab
+  const authGateUI = (
+    <div className="flex items-center justify-center py-16 px-4">
+      <form onSubmit={handleLogin} className="w-full max-w-sm space-y-6">
+        <div className="text-center space-y-2">
+          <p className="text-[15px] text-[var(--c-text-2)]">กรุณาใส่รหัสผ่านเพื่อดูตารางรับส่ง</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        <input
+          type="password"
+          value={passInput}
+          onChange={(e) => { setPassInput(e.target.value); setPassError(false); }}
+          placeholder="Passphrase"
+          className="w-full px-4 py-3 rounded-[10px] bg-[var(--c-input)] text-[var(--c-text)] text-center text-[17px] placeholder-[var(--c-text-3)] focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)] border-0"
+          autoFocus
+        />
+        {passError && <p className="text-[#FF453A] text-[13px] text-center">รหัสผ่านไม่ถูกต้อง</p>}
+        <button
+          type="submit"
+          className="w-full py-3.5 rounded-[12px] bg-[var(--c-accent)] text-white font-semibold text-[17px] hover:brightness-110 active:brightness-90 transition-all"
+        >
+          Remember Forever
+        </button>
+        <button
+          type="button"
+          onClick={() => { setForgotConfirm(true); setForgotStatus("idle"); }}
+          className="w-full text-[var(--c-accent)] text-[15px] hover:brightness-110 transition-all"
+        >
+          ลืมรหัสผ่าน?
+        </button>
+      </form>
+
+      {forgotConfirm && (
+        <div className="fixed inset-0 bg-[var(--c-overlay)] backdrop-blur-xl flex items-center justify-center z-50 px-4">
+          <div className="bg-[var(--c-card)] rounded-[14px] w-full max-w-[270px] overflow-hidden">
+            {forgotStatus === "idle" && (
+              <>
+                <div className="px-4 pt-5 pb-4 text-center">
+                  <p className="text-[17px] font-semibold text-[var(--c-text)] mb-1">ลืมรหัสผ่าน</p>
+                  <p className="text-[13px] text-[var(--c-text-2)]">ส่งรหัสผ่านไปยังอีเมลของคุณ?</p>
+                </div>
+                <div className="border-t border-[var(--c-sep)] flex">
+                  <button onClick={() => setForgotConfirm(false)} className="flex-1 py-3 text-[17px] text-[var(--c-accent)] border-r border-[var(--c-sep)] active:bg-[var(--c-fill-3)]">ยกเลิก</button>
+                  <button onClick={handleForgotSend} className="flex-1 py-3 text-[17px] font-semibold text-[var(--c-accent)] active:bg-[var(--c-fill-3)]">ยืนยัน</button>
+                </div>
+              </>
+            )}
+            {forgotStatus === "sending" && <div className="px-4 py-6 text-center"><p className="text-[15px] text-[var(--c-text-2)] animate-pulse">กำลังส่ง...</p></div>}
+            {forgotStatus === "sent" && (
+              <>
+                <div className="px-4 pt-5 pb-4 text-center"><p className="text-[17px] font-semibold text-[var(--c-text)] mb-1">สำเร็จ</p><p className="text-[13px] text-[var(--c-text-2)]">ส่งแล้ว! กรุณาเช็คอีเมล</p></div>
+                <div className="border-t border-[var(--c-sep)]"><button onClick={() => setForgotConfirm(false)} className="w-full py-3 text-[17px] font-semibold text-[var(--c-accent)] active:bg-[var(--c-fill-3)]">ตกลง</button></div>
+              </>
+            )}
+            {forgotStatus === "error" && (
+              <>
+                <div className="px-4 pt-5 pb-4 text-center"><p className="text-[17px] font-semibold text-[var(--c-text)] mb-1">ผิดพลาด</p><p className="text-[13px] text-[var(--c-text-2)]">ส่งไม่สำเร็จ ลองใหม่อีกครั้ง</p></div>
+                <div className="border-t border-[var(--c-sep)] flex">
+                  <button onClick={() => setForgotConfirm(false)} className="flex-1 py-3 text-[17px] text-[var(--c-accent)] border-r border-[var(--c-sep)] active:bg-[var(--c-fill-3)]">ปิด</button>
+                  <button onClick={handleForgotSend} className="flex-1 py-3 text-[17px] font-semibold text-[var(--c-accent)] active:bg-[var(--c-fill-3)]">ลองใหม่</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const NAV_ITEMS = [
+    { id: "schedule" as const, label: "ตารางรับส่ง", icon: "🚗", enabled: true },
+    { id: "price" as const, label: "ติดตามราคา", icon: "🏷️", enabled: true },
+    { id: "travel" as const, label: "Travel", icon: "✈️", enabled: true },
+  ];
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    localStorage.setItem("ui-theme", next);
+    document.documentElement.classList.toggle("dark", next === "dark");
+  };
+  const TRAVEL_PLAN_DAYS = Array.from({ length: 8 }, (_, i) => ({
+    day: i + 1,
+    label: `Day ${i + 1}`,
+    dateLabel: i === 0 ? "1 มี.ค. 2026" : "ยังไม่กำหนด",
+  }));
+
+  return (
+    <div className="min-h-screen bg-[var(--c-bg)]">
+      {/* Apple-style Navigation Bar */}
+      <header className="sticky top-0 z-40 bg-[var(--c-glass)] backdrop-blur-xl backdrop-saturate-[1.8] border-b border-[var(--c-sep)]">
+        <div className="flex items-center justify-between px-4 h-11 md:h-12 md:px-8">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[var(--c-fill-3)] transition-colors active:bg-[var(--c-fill-2)]"
+            >
+              <svg className="w-[22px] h-[22px] text-[var(--c-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {sidebarOpen
+                  ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                }
+              </svg>
+            </button>
+            <h1 className="text-[17px] md:text-[19px] font-semibold tracking-tight text-[var(--c-text)]">
+              Cake Family
+            </h1>
+          </div>
+          <button
+            onClick={toggleTheme}
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[var(--c-fill-3)] transition-colors active:bg-[var(--c-fill-2)]"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <Emoji char={theme === "dark" ? "🌙" : "☀️"} size={18} />
+          </button>
+        </div>
+      </header>
+
+      {/* Sidebar Overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-30 md:hidden" onClick={() => setSidebarOpen(false)}>
+          <div className="absolute inset-0 bg-[var(--c-overlay)] backdrop-blur-sm" />
+        </div>
+      )}
+
+      {/* Sidebar — Apple style */}
+      <aside className={`fixed top-11 md:top-12 left-0 z-30 h-[calc(100vh-44px)] md:h-[calc(100vh-48px)] w-[270px] bg-[var(--c-glass)] backdrop-blur-xl border-r border-[var(--c-sep)] transition-transform duration-300 ease-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
+        <div className="h-full flex flex-col">
+          <nav className="p-2.5 pt-3 space-y-0.5">
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.id}
+                disabled={!item.enabled}
+                onClick={() => {
+                  if (!item.enabled) return;
+                  if (item.id === "schedule") window.location.href = "/driver";
+                  if (item.id === "price") window.location.href = "/price-tracker";
+                  if (item.id === "travel") window.location.href = "/travel/tokyo2026";
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-[10px] text-[17px] transition-all ${
+                  activeTab === item.id && item.enabled
+                    ? "bg-[var(--c-accent)] text-white font-medium"
+                    : item.enabled
+                    ? "text-[var(--c-text)] font-normal hover:bg-[var(--c-fill-2)]"
+                    : "text-[var(--c-text-3)] cursor-not-allowed"
+                }`}
+              >
+                <Emoji char={item.icon} size={22} />
+                <span>{item.label}</span>
+                {!item.enabled && <span className="ml-auto text-[11px] text-[var(--c-text-3)] bg-[var(--c-fill-2)] px-2 py-0.5 rounded-full">เร็วๆนี้</span>}
+              </button>
+            ))}
+          </nav>
+
+        </div>
+      </aside>
+
+      {/* Main Content — Apple HIG spacing */}
+      <main className="px-4 py-5 md:px-8 md:py-6 md:pl-[302px]">
+        <div className="max-w-7xl mx-auto">
+
+        {/* Tab: Schedule */}
+        {activeTab === "schedule" && (!authed ? authGateUI : <>
+
+        {/* Week Navigation — Apple Large Title style */}
+        <div className="flex items-center justify-between mb-5 md:mb-8">
+          <h2 className="text-[22px] md:text-[28px] font-bold text-[var(--c-text)] tracking-tight">{weekRange()}</h2>
+          <div className="flex items-center gap-0.5">
+            <Link
+              href="/settings"
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[var(--c-fill-2)] transition-colors active:scale-95"
+            >
+              <svg className="w-[20px] h-[20px] text-[var(--c-text-2)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.212-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+            </Link>
+            <button
+              onClick={() => navigateWeek(-1)}
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[var(--c-fill-2)] transition-colors active:scale-95"
+            >
+              <svg className="w-[18px] h-[18px] text-[var(--c-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              onClick={goToCurrentWeek}
+              className="px-3 py-1.5 rounded-full hover:bg-[var(--c-fill-2)] transition-colors text-[15px] font-medium text-[var(--c-accent)] active:scale-95"
+            >
+              วันนี้
+            </button>
+            <button
+              onClick={() => navigateWeek(1)}
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[var(--c-fill-2)] transition-colors active:scale-95"
+            >
+              <svg className="w-[18px] h-[18px] text-[var(--c-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Weather Dashboard */}
+        <WeatherDashboard monday={currentMonday} schedule={schedule} />
+
+        {/* Schedule Table */}
+        <div className="bg-[var(--c-card)] rounded-[14px] overflow-hidden">
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[var(--c-sep)]">
+                  <th className="px-5 py-3.5 text-left text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide w-36">วัน</th>
+                  <th className="px-5 py-3.5 text-center text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide">เช้า (รับ)</th>
+                  <th className="px-5 py-3.5 text-center text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide">เย็น (ส่ง)</th>
+                  <th className="px-5 py-3.5 text-center text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide w-36">น้ำมัน</th>
+                  <th className="px-5 py-3.5 text-center text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide w-44">เลขไมล์</th>
+                  <th className="px-5 py-3.5 text-left text-[13px] font-semibold text-[var(--c-text-2)] uppercase tracking-wide w-48">หมายเหตุ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {weekDays.map((day, idx) => {
+                  const dateKey = formatDateKey(day);
+                  const entry = getEntry(dateKey);
+                  const today = isToday(day);
+                  const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                  const isEditing = editingDay === dateKey;
+
+                  return (
+                    <tr
+                      key={dateKey}
+                      onClick={() => { if (editingDay !== dateKey) startEditing(dateKey); }}
+                      className={`border-b border-[var(--c-sep)]/60 transition-colors cursor-pointer ${
+                        savedFlash === dateKey
+                          ? "bg-[#30D158]/8"
+                          : isEditing
+                          ? "bg-[var(--c-accent)]/8"
+                          : "hover:bg-[var(--c-fill-3)]"
+                      }`}
+                    >
+                      <td className="px-5 py-4">
+                        <div className={`font-semibold text-[17px] ${today ? "text-[var(--c-accent)]" : "text-[var(--c-text)]"}`}>
+                          {THAI_DAYS[day.getDay()]}
+                        </div>
+                        <div className={`text-[13px] mt-0.5 ${today ? "text-[var(--c-accent)]" : "text-[var(--c-text-2)]"}`}>
+                          {day.getDate()}/{day.getMonth() + 1}
+                          {today && (
+                            <span className="ml-2 px-1.5 py-0.5 bg-[var(--c-accent)]/15 text-[var(--c-accent)] rounded-full text-[11px] font-semibold">
+                              วันนี้
+                            </span>
+                          )}
+                        </div>
+                        {isEditing && (
+                          <div className="flex gap-3 mt-2.5">
+                            <button onClick={(e) => { e.stopPropagation(); cancelEdit(); }} className="text-[13px] text-[var(--c-text-2)] hover:text-[var(--c-text)]">ยกเลิก</button>
+                            <button onClick={(e) => { e.stopPropagation(); saveDay(); }} className="text-[13px] text-[var(--c-accent)] font-medium">บันทึก</button>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <DriverCell
+                          value={entry.morning}
+                          editMode={isEditing}
+                          onSelect={(d) => handleDriverSelect(dateKey, "morning", d)}
+                        />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <DriverCell
+                          value={entry.evening}
+                          editMode={isEditing}
+                          onSelect={(d) => handleDriverSelect(dateKey, "evening", d)}
+                        />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <FuelCell
+                          value={entry.fuel}
+                          editMode={isEditing}
+                          onChange={(v) => handleFuelChange(dateKey, v)}
+                        />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <MileageCell
+                          value={entry.mileage}
+                          editMode={isEditing}
+                          onChange={(v) => handleMileageChange(dateKey, v)}
+                          getMaxMileage={getMaxMileage}
+                        />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <RemarkCell
+                          value={entry.remarks}
+                          emojis={entry.emojis || []}
+                          editMode={isEditing}
+                          onChange={(v) => handleRemarksChange(dateKey, v)}
+                          onEmojisChange={(v) => handleEmojisChange(dateKey, v)}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile — Apple Grouped List */}
+          <div className="md:hidden rounded-[14px] bg-[var(--c-card)] overflow-hidden">
+            {weekDays.map((day, idx) => {
+              const dateKey = formatDateKey(day);
+              const entry = getEntry(dateKey);
+              const today = isToday(day);
+              const isEditing = editingDay === dateKey;
+
+              return (
+                <div
+                  key={dateKey}
+                  className={`transition-colors ${idx > 0 ? "border-t border-[var(--c-sep)]/60" : ""} ${
+                    savedFlash === dateKey
+                      ? "bg-[#30D158]/8"
+                      : isEditing
+                      ? "bg-[var(--c-accent)]/6"
+                      : ""
+                  }`}
+                >
+                  {/* Day header — tappable */}
+                  <button
+                    type="button"
+                    onClick={() => isEditing ? saveDay() : startEditing(dateKey)}
+                    className="w-full flex items-center justify-between px-4 py-3.5"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className={`font-semibold text-[17px] ${today ? "text-[var(--c-accent)]" : "text-[var(--c-text)]"}`}>
+                        {THAI_DAYS[day.getDay()]}
+                      </span>
+                      <span className={`text-[13px] ${today ? "text-[var(--c-accent)]" : "text-[var(--c-text-2)]"}`}>
+                        {day.getDate()}/{day.getMonth() + 1}
+                      </span>
+                      {today && (
+                        <span className="px-1.5 py-0.5 bg-[var(--c-accent)]/15 text-[var(--c-accent)] rounded-full text-[11px] font-semibold">วันนี้</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {savedFlash === dateKey && (
+                        <span className="text-[#30D158] text-[13px] font-medium">บันทึกแล้ว</span>
+                      )}
+                      {!isEditing && (entry.morning || entry.evening) && (
+                        <div className="flex items-center gap-1 text-[13px]">
+                          {entry.morning && <span className={`${getDriverStyle(entry.morning).color} font-medium`}>{entry.morning}</span>}
+                          {entry.morning && entry.evening && <span className="text-[var(--c-text-4)]">/</span>}
+                          {entry.evening && <span className={`${getDriverStyle(entry.evening).color} font-medium`}>{entry.evening}</span>}
+                        </div>
+                      )}
+                      {!isEditing && entry.emojis && entry.emojis.length > 0 && (
+                        <span className="flex items-center gap-0.5">{entry.emojis.map((e, i) => <Emoji key={i} char={e} size={13} />)}</span>
+                      )}
+                      <svg className={`w-[14px] h-[14px] text-[var(--c-text-3)] transition-transform ${isEditing ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </button>
+
+                  {/* Expanded edit area */}
+                  {isEditing && <div className="px-4 pb-4">
+
+                  {/* Row 1: Morning + Evening */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                      <div className="text-[13px] text-[var(--c-text-2)] mb-2 font-medium uppercase tracking-wide">เช้า (รับ)</div>
+                      <DriverCell
+                        value={entry.morning}
+                        editMode={isEditing}
+                        onSelect={(d) => handleDriverSelect(dateKey, "morning", d)}
+                        mobile
+                      />
+                    </div>
+                    <div>
+                      <div className="text-[13px] text-[var(--c-text-2)] mb-2 font-medium uppercase tracking-wide">เย็น (ส่ง)</div>
+                      <DriverCell
+                        value={entry.evening}
+                        editMode={isEditing}
+                        onSelect={(d) => handleDriverSelect(dateKey, "evening", d)}
+                        mobile
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 2: Fuel + Mileage */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                      <div className="text-[13px] text-[var(--c-text-2)] mb-2 font-medium uppercase tracking-wide">น้ำมัน (L)</div>
+                      <FuelCell
+                        value={entry.fuel}
+                        editMode={isEditing}
+                        onChange={(v) => handleFuelChange(dateKey, v)}
+                        mobile
+                      />
+                    </div>
+                    <div>
+                      <div className="text-[13px] text-[var(--c-text-2)] mb-2 font-medium uppercase tracking-wide">เลขไมล์</div>
+                      <MileageCell
+                        value={entry.mileage}
+                        editMode={isEditing}
+                        onChange={(v) => handleMileageChange(dateKey, v)}
+                        getMaxMileage={getMaxMileage}
+                        mobile
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 3: Remark */}
+                  <div>
+                    <div className="text-[13px] text-[var(--c-text-2)] mb-2 font-medium uppercase tracking-wide">หมายเหตุ</div>
+                    <RemarkCell
+                      value={entry.remarks}
+                      emojis={entry.emojis || []}
+                      editMode={isEditing}
+                      onChange={(v) => handleRemarksChange(dateKey, v)}
+                      onEmojisChange={(v) => handleEmojisChange(dateKey, v)}
+                      mobile
+                    />
+
+                    {/* Apple-style action buttons */}
+                    <div className="flex gap-2 mt-5">
+                      <button
+                        onClick={cancelEdit}
+                        className="px-5 py-2.5 rounded-[10px] text-[15px] font-normal text-[var(--c-text-2)] bg-[var(--c-fill-2)] active:bg-[var(--c-fill)] transition-colors"
+                      >
+                        ยกเลิก
+                      </button>
+                      <button
+                        onClick={saveDay}
+                        className="flex-1 py-2.5 rounded-[10px] text-[15px] font-semibold text-white bg-[var(--c-accent)] active:brightness-90 transition-all"
+                      >
+                        บันทึก
+                      </button>
+                    </div>
+                  </div></div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center mt-8 text-[11px] text-[var(--c-text-3)]">
+          ข้อมูลถูกบันทึกบนเซิร์ฟเวอร์ ใช้ได้ทุกเครื่อง
+        </div>
+
+        </>)}
+
+        {/* Tab: Price Tracker */}
+        {activeTab === "price" && (
+          <div className="py-20">
+            <p className="text-[17px] font-medium text-[var(--c-text)]">ติดตามราคาของใช้ในบ้าน</p>
+          </div>
+        )}
+
+        {activeTab === "travel" && (
+          <div className="py-6 md:py-8">
+            <p className="text-[22px] md:text-[28px] font-bold text-[var(--c-text)] tracking-tight mb-1">แผนการเดินทาง</p>
+            <p className="text-[14px] text-[var(--c-text-2)] mb-5">Tokyo 2026</p>
+            <div className="grid grid-cols-4 gap-3 md:gap-4 max-w-4xl">
+              {TRAVEL_PLAN_DAYS.map((day) => (
+                <button
+                  key={day.label}
+                  onClick={() => setSelectedTravelDay(day.day)}
+                  className={`rounded-[14px] border px-3 py-4 text-center transition-all ${
+                    selectedTravelDay === day.day
+                      ? "border-[var(--c-accent)] bg-[var(--c-accent-bg)] text-[var(--c-accent)]"
+                      : "border-[var(--c-sep)] bg-[var(--c-card)] text-[var(--c-text)] hover:bg-[var(--c-fill-3)]"
+                  }`}
+                >
+                  <div className="text-[15px] font-semibold">{day.label}</div>
+                  <div className="text-[12px] mt-1 text-[var(--c-text-2)]">{day.dateLabel}</div>
+                </button>
+              ))}
+            </div>
+
+            {selectedTravelDay === 1 && (
+              <div className="mt-6 max-w-4xl space-y-4">
+                <div className="rounded-[16px] border border-[var(--c-accent)]/45 bg-[var(--c-accent-bg)] p-5 md:p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[20px] md:text-[24px] font-bold text-[var(--c-text)]">Day 1: ออกเดินทางไปโตเกียว</p>
+                      <p className="text-[13px] mt-1 text-[var(--c-text-2)]">วันอาทิตย์ 1 มีนาคม 2026</p>
+                    </div>
+                    <button
+                      onClick={() => setTravelDetailOpen((prev) => !prev)}
+                      className="px-3 py-1.5 rounded-full text-[13px] font-medium bg-[var(--c-fill-2)] text-[var(--c-text)] hover:bg-[var(--c-fill)] transition-colors"
+                    >
+                      {travelDetailOpen ? "ซ่อนรายละเอียด" : "แสดงรายละเอียด"}
+                    </button>
+                  </div>
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="rounded-[14px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] p-4">
+                      <p className="text-[12px] uppercase tracking-wide text-[var(--c-text-2)]">เที่ยวบิน</p>
+                      <p className="text-[17px] font-semibold text-[var(--c-text)] mt-1">XJ 606 (บินตรง)</p>
+                    </div>
+                    <div className="rounded-[14px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] p-4">
+                      <p className="text-[12px] uppercase tracking-wide text-[var(--c-text-2)]">เส้นทาง</p>
+                      <p className="text-[17px] font-semibold text-[var(--c-text)] mt-1">DMK -&gt; NRT</p>
+                    </div>
+                    <div className="rounded-[14px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] p-4">
+                      <p className="text-[12px] uppercase tracking-wide text-[var(--c-text-2)]">เวลาบิน</p>
+                      <p className="text-[17px] font-semibold text-[var(--c-text)] mt-1">11:50 - 20:00</p>
+                    </div>
+                  </div>
+                </div>
+
+                {travelDetailOpen && (
+                  <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-4 md:p-5">
+                    <p className="text-[16px] font-semibold text-[var(--c-text)] mb-4">ไทม์ไลน์ Day 1</p>
+                    <div className="space-y-4">
+                      {[
+                        { time: "09:50", title: "ออกจากบ้าน", note: "คำนวณตามเงื่อนไข: ออกก่อนเวลาไฟลท์ 2 ชั่วโมง" },
+                        { time: "10:20", title: "ถึงสนามบินดอนเมือง (DMK)", note: "เตรียมเช็กอินและผ่านจุดตรวจ", map: "https://www.google.com/maps?q=Don+Mueang+International+Airport&output=embed", mapTitle: "แผนที่สนามบินดอนเมือง" },
+                        { time: "11:20", title: "พร้อมที่เกต", note: "เผื่อเวลาขึ้นเครื่องและตรวจเอกสารรอบสุดท้าย" },
+                        { time: "11:50", title: "เครื่องออก (XJ 606)", note: "บินตรง DMK -> NRT" },
+                        { time: "20:00", title: "ถึงสนามบินนาริตะ (NRT)", note: "เวลาท้องถิ่นโตเกียว" },
+                        { time: "20:45", title: "ตม. + รับกระเป๋า", note: "เผื่อเวลาโดยประมาณหลังลงเครื่อง" },
+                        { time: "21:30", title: "ออกจาก NRT ไปโรงแรม", note: "ดูเส้นทางเบื้องต้นไปโซนที่พัก", map: "https://www.google.com/maps?q=Narita+International+Airport+to+Shinjuku+Station&output=embed", mapTitle: "เส้นทางจากนาริตะไปที่พัก" },
+                        { time: "23:00", title: "เช็กอินที่พัก / พักผ่อน", note: "จบแผนการเดินทางของ Day 1" },
+                      ].map((row) => (
+                        <div key={`${row.time}-${row.title}`} className="rounded-[12px] bg-[var(--c-subtle-card)] border border-[var(--c-sep)] p-3">
+                          <div className="flex gap-3">
+                            <div className="min-w-14 text-[15px] font-semibold text-[var(--c-accent)]">{row.time}</div>
+                            <div>
+                              <p className="text-[15px] font-medium text-[var(--c-text)]">{row.title}</p>
+                              <p className="text-[13px] text-[var(--c-text-2)]">{row.note}</p>
+                            </div>
+                          </div>
+                          {"map" in row && row.map && (
+                            <div className="mt-3 overflow-hidden rounded-[10px] border border-[var(--c-sep)]">
+                              <iframe
+                                title={row.mapTitle}
+                                src={row.map}
+                                loading="lazy"
+                                className="w-full h-44"
+                                referrerPolicy="no-referrer-when-downgrade"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {selectedTravelDay !== 1 && (
+              <div className="mt-6 max-w-4xl rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-5">
+                <p className="text-[16px] font-semibold text-[var(--c-text)]">Day {selectedTravelDay}</p>
+                <p className="text-[13px] text-[var(--c-text-2)] mt-1">เตรียมเทมเพลตไทม์ไลน์ไว้แล้ว สามารถเติมกิจกรรมของวันนี้ได้ต่อทันที</p>
+              </div>
+            )}
+          </div>
+        )}
+
         </div>
       </main>
+
+    </div>
+  );
+}
+
+function DriverCell({
+  value,
+  editMode,
+  onSelect,
+  mobile,
+}: {
+  value: Driver;
+  editMode: boolean;
+  onSelect: (d: Driver) => void;
+  mobile?: boolean;
+}) {
+  const style = getDriverStyle(value);
+
+  if (!editMode) {
+    if (!value) {
+      return (
+        <div className={mobile ? "flex justify-start" : "flex justify-center"}>
+          <span className="text-[var(--c-text-3)] text-[15px]">—</span>
+        </div>
+      );
+    }
+    return (
+      <div className={mobile ? "flex justify-start" : "flex justify-center"}>
+        <span className={`${mobile ? "px-3 py-1 text-[13px]" : "px-4 py-1.5 text-[15px]"} rounded-full font-semibold ${style.bg} ${style.color}`}>
+          {value}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex ${mobile ? "justify-start" : "justify-center"} gap-2 flex-wrap`}>
+      {DRIVERS.map((d) => {
+        const isSelected = value === d.name;
+        return (
+          <button
+            key={d.name}
+            onClick={() => onSelect(d.name)}
+            className={`${mobile ? "px-3.5 py-2 text-[13px]" : "px-4 py-2 text-[13px]"} rounded-full font-semibold transition-all active:scale-95 ${
+              isSelected
+                ? `${d.bg} ${d.color} ring-2 ${d.ring}/50`
+                : `bg-[var(--c-fill-2)] text-[var(--c-text-2)]`
+            }`}
+          >
+            {d.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function FuelCell({
+  value,
+  editMode,
+  onChange,
+  mobile,
+}: {
+  value: string;
+  editMode: boolean;
+  onChange: (v: string) => void;
+  mobile?: boolean;
+}) {
+  if (!editMode) {
+    if (!value) {
+      return (
+        <div className={mobile ? "flex justify-start" : "flex justify-center"}>
+          <span className="text-[var(--c-text-3)] text-[15px]">—</span>
+        </div>
+      );
+    }
+    return (
+      <div className={mobile ? "flex justify-start" : "flex justify-center"}>
+        <span className={`${mobile ? "px-3 py-1 text-[13px]" : "px-4 py-1.5 text-[15px]"} rounded-full font-semibold bg-[#FF9F0A]/15 text-[#FF9F0A]`}>
+          {value} L
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={mobile ? "flex justify-start" : "flex justify-center"}>
+      <input
+        type="number"
+        min="0"
+        step="0.1"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="0"
+        className={`${mobile ? "w-full" : "w-20"} text-center py-2 px-3 rounded-[10px] bg-[var(--c-input)] text-[#FF9F0A] font-semibold text-[15px] placeholder-[var(--c-text-3)] focus:outline-none focus:ring-2 focus:ring-[#FF9F0A]/50 border-0 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+      />
+    </div>
+  );
+}
+
+const FUEL_PRESETS = [15, 20, 30];
+
+function randomKmPerLiter(): number {
+  // random 6.9 - 7.6 with micro noise so it's never a clean pattern
+  const base = 6.9 + Math.random() * 0.7;
+  const noise = (Math.random() - 0.5) * 0.2;
+  const raw = base + noise;
+  // clamp 6.8 - 7.7 then round to 2 decimals
+  return Math.round(Math.min(7.7, Math.max(6.8, raw)) * 100) / 100;
+}
+
+function estimateMileage(baseMileage: number, liters: number): number {
+  const rate = randomKmPerLiter();
+  return Math.round(baseMileage + liters * rate);
+}
+
+function MileageCell({
+  value,
+  editMode,
+  onChange,
+  getMaxMileage,
+  mobile,
+}: {
+  value: string;
+  editMode: boolean;
+  onChange: (v: string) => void;
+  getMaxMileage: () => number;
+  mobile?: boolean;
+}) {
+  const [customLiters, setCustomLiters] = useState("");
+  const [previewKm, setPreviewKm] = useState<Record<number, number>>({});
+  const refreshPreview = useCallback(() => {
+    const obj: Record<number, number> = {};
+    for (const l of FUEL_PRESETS) {
+      obj[l] = Math.round(l * randomKmPerLiter());
+    }
+    setPreviewKm(obj);
+  }, []);
+  useEffect(() => { refreshPreview(); }, [refreshPreview]);
+
+  if (!editMode) {
+    if (!value) {
+      return (
+        <div className={mobile ? "flex justify-start" : "flex justify-center"}>
+          <span className="text-[var(--c-text-3)] text-[15px]">—</span>
+        </div>
+      );
+    }
+    return (
+      <div className={mobile ? "flex justify-start" : "flex justify-center"}>
+        <span className={`${mobile ? "px-3 py-1 text-[13px]" : "px-4 py-1.5 text-[15px]"} rounded-full font-semibold bg-[#BF5AF2]/15 text-[#BF5AF2]`}>
+          {Number(value).toLocaleString()} km
+        </span>
+      </div>
+    );
+  }
+
+  const maxMileage = getMaxMileage();
+  const hasBase = maxMileage > 0;
+
+  if (mobile) {
+    return (
+      <div className="flex flex-col gap-2">
+        <input
+          type="number"
+          min="0"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="เลขไมล์"
+          className="w-full text-center py-2 px-3 rounded-[10px] bg-[var(--c-input)] text-[#BF5AF2] font-semibold text-[15px] placeholder-[var(--c-text-3)] focus:outline-none focus:ring-2 focus:ring-[#BF5AF2]/50 border-0 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+        {hasBase && (
+          <button
+            type="button"
+            onClick={() => onChange(String(maxMileage))}
+            className="text-[13px] px-3 py-1.5 rounded-[8px] bg-[#BF5AF2]/10 text-[#BF5AF2] active:bg-[#BF5AF2]/20 transition-all w-full"
+          >
+            Auto ({maxMileage.toLocaleString()})
+          </button>
+        )}
+        <div className="flex gap-1.5 flex-wrap">
+          {FUEL_PRESETS.map((liters) => (
+            <button
+              key={liters}
+              type="button"
+              onClick={() => {
+                onChange(String(estimateMileage(maxMileage, liters)));
+                refreshPreview();
+              }}
+              disabled={!hasBase}
+              className={`text-[13px] px-2.5 py-1.5 rounded-[8px] flex-1 transition-all ${
+                hasBase
+                  ? "bg-[var(--c-fill-2)] text-[var(--c-text)] active:bg-[var(--c-fill)]"
+                  : "bg-[var(--c-fill-3)] text-[var(--c-text-4)] cursor-not-allowed"
+              }`}
+            >
+              +{liters}L{previewKm[liters] ? ` (~${previewKm[liters]})` : ""}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <input
+            type="number"
+            min="0"
+            step="0.1"
+            value={customLiters}
+            onChange={(e) => setCustomLiters(e.target.value)}
+            placeholder="L"
+            className="flex-1 text-center py-1.5 px-2 rounded-[8px] bg-[var(--c-input)] text-[var(--c-text)] text-[13px] placeholder-[var(--c-text-3)] focus:outline-none focus:ring-1 focus:ring-[#BF5AF2]/50 border-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const l = parseFloat(customLiters);
+              if (!isNaN(l) && l > 0 && hasBase) {
+                onChange(String(estimateMileage(maxMileage, l)));
+              }
+            }}
+            disabled={!hasBase || !customLiters}
+            className={`text-[13px] px-3 py-1.5 rounded-[8px] transition-all ${
+              hasBase && customLiters
+                ? "bg-[#BF5AF2]/10 text-[#BF5AF2] active:bg-[#BF5AF2]/20"
+                : "bg-[var(--c-fill-3)] text-[var(--c-text-4)] cursor-not-allowed"
+            }`}
+          >
+            +คำนวณ
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <input
+        type="number"
+        min="0"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="เลขไมล์"
+        className="w-28 text-center py-2 px-2 rounded-[10px] bg-[var(--c-input)] text-[#BF5AF2] font-semibold text-[15px] placeholder-[var(--c-text-3)] focus:outline-none focus:ring-2 focus:ring-[#BF5AF2]/50 border-0 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+      />
+      {hasBase && (
+        <button
+          type="button"
+          onClick={() => onChange(String(maxMileage))}
+          className="text-[11px] px-2 py-0.5 rounded-[6px] bg-[#BF5AF2]/10 text-[#BF5AF2] active:bg-[#BF5AF2]/20 transition-all"
+        >
+          Auto ({maxMileage.toLocaleString()})
+        </button>
+      )}
+      <div className="flex gap-1 flex-wrap justify-center">
+        {FUEL_PRESETS.map((liters) => (
+          <button
+            key={liters}
+            type="button"
+            onClick={() => {
+              onChange(String(estimateMileage(maxMileage, liters)));
+              refreshPreview();
+            }}
+            disabled={!hasBase}
+            className={`text-[11px] px-1.5 py-0.5 rounded-[6px] transition-all ${
+              hasBase
+                ? "bg-[var(--c-fill-2)] text-[var(--c-text)] active:bg-[var(--c-fill)]"
+                : "bg-[var(--c-fill-3)] text-[var(--c-text-4)] cursor-not-allowed"
+            }`}
+          >
+            +{liters}L{previewKm[liters] ? ` (~${previewKm[liters]})` : ""}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-1">
+        <input
+          type="number"
+          min="0"
+          step="0.1"
+          value={customLiters}
+          onChange={(e) => setCustomLiters(e.target.value)}
+          placeholder="L"
+          className="w-12 text-center py-0.5 px-1 rounded-[6px] bg-[var(--c-input)] text-[var(--c-text)] text-[11px] placeholder-[var(--c-text-3)] focus:outline-none focus:ring-1 focus:ring-[#BF5AF2]/50 border-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            const l = parseFloat(customLiters);
+            if (!isNaN(l) && l > 0 && hasBase) {
+              onChange(String(estimateMileage(maxMileage, l)));
+            }
+          }}
+          disabled={!hasBase || !customLiters}
+          className={`text-[11px] px-1.5 py-0.5 rounded-[6px] transition-all ${
+            hasBase && customLiters
+              ? "bg-[#BF5AF2]/10 text-[#BF5AF2] active:bg-[#BF5AF2]/20"
+              : "bg-[var(--c-fill-3)] text-[var(--c-text-4)] cursor-not-allowed"
+          }`}
+        >
+          +คำนวณ
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const REMARK_EMOJIS = [
+  { emoji: "\uD83E\uDD5A", label: "egg" },
+  { emoji: "\u2764\uFE0F", label: "heart" },
+  { emoji: "\uD83E\uDE78", label: "blood" },
+];
+
+function RemarkCell({
+  value,
+  emojis,
+  editMode,
+  onChange,
+  onEmojisChange,
+  mobile,
+}: {
+  value: DriverRemarks;
+  emojis: string[];
+  editMode: boolean;
+  onChange: (v: DriverRemarks) => void;
+  onEmojisChange: (v: string[]) => void;
+  mobile?: boolean;
+}) {
+  type RKey = "Hon" | "Jay" | "JH";
+  const allKeys: RKey[] = ["Hon", "Jay", "JH"];
+
+  // keys that have been toggled on (value can be "" which is valid)
+  const activeKeys = allKeys.filter((k) => k in value);
+
+  const toggleEmoji = (emoji: string) => {
+    if (emojis.includes(emoji)) {
+      onEmojisChange(emojis.filter((e) => e !== emoji));
+    } else {
+      onEmojisChange([...emojis, emoji]);
+    }
+  };
+
+  // --- display mode ---
+  if (!editMode) {
+    const filled = activeKeys.filter((k) => value[k]);
+    if (filled.length === 0 && emojis.length === 0) {
+      return <span className="text-[var(--c-text-3)] text-[15px]">—</span>;
+    }
+    return (
+      <div className="space-y-1">
+        {emojis.length > 0 && (
+          <div className="flex gap-1">{emojis.map((e, i) => <span key={i} className="text-[15px]">{e}</span>)}</div>
+        )}
+        {filled.map((k) => {
+          const d = DRIVERS.find((dr) => dr.name === k)!;
+          return (
+            <div key={k} className="flex items-start gap-1.5">
+              <span className={`shrink-0 px-1.5 py-0.5 rounded-[4px] text-[11px] font-semibold ${d.bg} ${d.color}`}>
+                {d.label}
+              </span>
+              <span className="text-[13px] text-[var(--c-text-2)] leading-snug break-words line-clamp-2">
+                {value[k]}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // --- edit mode ---
+  const toggle = (k: RKey) => {
+    const next = { ...value };
+    if (k in next) {
+      delete next[k];
+    } else {
+      next[k] = "";
+    }
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* tag + emoji buttons */}
+      <div className="flex gap-2 flex-wrap items-center">
+        {allKeys.map((k) => {
+          const d = DRIVERS.find((dr) => dr.name === k)!;
+          const on = k in value;
+          return (
+            <button
+              key={k}
+              type="button"
+              onClick={() => toggle(k)}
+              className={`${mobile ? "px-3 py-1.5 text-[13px]" : "px-2 py-0.5 text-[11px]"} rounded-[6px] font-semibold transition-all active:scale-95 ${
+                on
+                  ? `${d.bg} ${d.color}`
+                  : "bg-[var(--c-fill-2)] text-[var(--c-text-3)]"
+              }`}
+            >
+              {d.label}
+            </button>
+          );
+        })}
+        <div className="w-px h-4 bg-[var(--c-fill-2)]" />
+        {REMARK_EMOJIS.map((re) => {
+          const on = emojis.includes(re.emoji);
+          return (
+            <button
+              key={re.label}
+              type="button"
+              onClick={() => toggleEmoji(re.emoji)}
+              className={`${mobile ? "px-2 py-1" : "px-1.5 py-0.5"} rounded-[6px] text-[15px] transition-all active:scale-95 ${
+                on
+                  ? "bg-[var(--c-fill)] ring-1 ring-[var(--c-sep)]"
+                  : "bg-[var(--c-fill-3)] opacity-40"
+              }`}
+            >
+              <Emoji char={re.emoji} size={15} />
+            </button>
+          );
+        })}
+      </div>
+      {/* per-driver textarea */}
+      {activeKeys.map((k) => {
+        const d = DRIVERS.find((dr) => dr.name === k)!;
+        return (
+          <div key={k} className="flex items-start gap-1.5">
+            <span className={`shrink-0 mt-2 px-1.5 py-0.5 rounded-[4px] text-[11px] font-semibold ${d.bg} ${d.color}`}>
+              {d.label}
+            </span>
+            <textarea
+              rows={2}
+              value={value[k] ?? ""}
+              onChange={(e) => onChange({ ...value, [k]: e.target.value })}
+              placeholder={`${d.label} ทำอะไร...`}
+              className={`flex-1 py-2 px-3 rounded-[10px] bg-[var(--c-input)] text-[15px] placeholder-[var(--c-text-3)] focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/50 border-0 transition-all resize-none leading-snug ${d.color}`}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// --- Weather + PM2.5 Dashboard ---
+
+function getWeatherIcon(code: number): string {
+  if (code === 0) return "\u2600\uFE0F"; // ☀️
+  if (code <= 3) return "\u26C5"; // ⛅
+  if (code <= 48) return "\uD83C\uDF2B\uFE0F"; // 🌫️
+  if (code <= 57) return "\uD83C\uDF26\uFE0F"; // 🌦️
+  if (code <= 67) return "\uD83C\uDF27\uFE0F"; // 🌧️
+  if (code <= 77) return "\u2744\uFE0F"; // ❄️
+  if (code <= 82) return "\uD83C\uDF27\uFE0F"; // 🌧️
+  return "\u26C8\uFE0F"; // ⛈️
+}
+
+function getPm25Style(pm25: number): { color: string; bg: string; label: string } {
+  if (pm25 < 0) return { color: "text-[var(--c-text-3)]", bg: "bg-[var(--c-fill-3)]", label: "\u2014" };
+  if (pm25 <= 25) return { color: "text-[#30D158]", bg: "bg-[#30D158]/15", label: "\u0E14\u0E35\u0E21\u0E32\u0E01" };
+  if (pm25 <= 37.5) return { color: "text-[#30D158]", bg: "bg-[#30D158]/10", label: "\u0E14\u0E35" };
+  if (pm25 <= 50) return { color: "text-[#FFD60A]", bg: "bg-[#FFD60A]/15", label: "\u0E1B\u0E32\u0E19\u0E01\u0E25\u0E32\u0E07" };
+  if (pm25 <= 90) return { color: "text-[#FF9F0A]", bg: "bg-[#FF9F0A]/15", label: "\u0E40\u0E23\u0E34\u0E48\u0E21\u0E21\u0E35\u0E1C\u0E25" };
+  if (pm25 <= 120) return { color: "text-[#FF453A]", bg: "bg-[#FF453A]/15", label: "\u0E21\u0E35\u0E1C\u0E25\u0E15\u0E48\u0E2D\u0E2A\u0E38\u0E02\u0E20\u0E32\u0E1E" };
+  return { color: "text-[#BF5AF2]", bg: "bg-[#BF5AF2]/15", label: "\u0E2D\u0E31\u0E19\u0E15\u0E23\u0E32\u0E22" };
+}
+
+function getAqiStyle(aqi: number): { color: string; bg: string; label: string } {
+  if (aqi < 0) return { color: "text-[var(--c-text-3)]", bg: "", label: "" };
+  if (aqi <= 50) return { color: "text-[#30D158]", bg: "bg-[#30D158]/8", label: "Good" };
+  if (aqi <= 100) return { color: "text-[#FFD60A]", bg: "bg-[#FFD60A]/8", label: "Moderate" };
+  if (aqi <= 150) return { color: "text-[#FF9F0A]", bg: "bg-[#FF9F0A]/8", label: "Unhealthy (SG)" };
+  if (aqi <= 200) return { color: "text-[#FF453A]", bg: "bg-[#FF453A]/8", label: "Unhealthy" };
+  if (aqi <= 300) return { color: "text-[#BF5AF2]", bg: "bg-[#BF5AF2]/8", label: "Very Unhealthy" };
+  return { color: "text-[#FF375F]", bg: "bg-[#FF375F]/8", label: "Hazardous" };
+}
+
+const MINI_DAYS = ["\u0E08", "\u0E2D", "\u0E1E", "\u0E1E\u0E24", "\u0E28"];
+
+function WeatherDashboard({ monday, schedule }: { monday: Date; schedule: ScheduleData }) {
+  const [weatherData, setWeatherData] = useState<WeatherDay[]>([]);
+  const [usAqi, setUsAqi] = useState<number | null>(null);
+  const [aqiSource, setAqiSource] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchData() {
+      try {
+        const [wRes, aqiRes] = await Promise.all([
+          fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${PHRA_PRADAENG.lat}&longitude=${PHRA_PRADAENG.lon}&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_sum&timezone=Asia%2FBangkok&past_days=7&forecast_days=16`
+          ),
+          fetch("/api/air-quality"),
+        ]);
+
+        const w = wRes.ok ? await wRes.json() : null;
+
+        // AQICN US AQI (real station data)
+        if (aqiRes.ok) {
+          const aqi = await aqiRes.json();
+          if (aqi.aqi != null && !cancelled) {
+            setUsAqi(aqi.aqi);
+            setAqiSource(aqi.source || "aqicn");
+          }
+        }
+
+        if (w?.daily) {
+          const days: WeatherDay[] = w.daily.time.map((date: string, i: number) => ({
+            date,
+            tempMax: Math.round(w.daily.temperature_2m_max[i]),
+            tempMin: Math.round(w.daily.temperature_2m_min[i]),
+            weatherCode: w.daily.weather_code?.[i] ?? 0,
+            precipitation: w.daily.precipitation_sum?.[i] ?? 0,
+            humidity: 0,
+            pm25: -1,
+          }));
+          if (!cancelled) setWeatherData(days);
+        }
+      } catch (e) {
+        console.error("Weather fetch failed:", e);
+      }
+      if (!cancelled) setLoading(false);
+    }
+    fetchData();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const weekDays = Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+
+  const today = new Date();
+  const isSameDay = (a: Date, b: Date) =>
+    a.getDate() === b.getDate() &&
+    a.getMonth() === b.getMonth() &&
+    a.getFullYear() === b.getFullYear();
+
+  const driverMini = (driver: Driver) => {
+    if (!driver) return null;
+    const cfg = DRIVERS.find((dr) => dr.name === driver);
+    if (!cfg) return null;
+    return (
+      <span className={`font-bold text-[10px] md:text-xs ${cfg.color}`}>{cfg.label}</span>
+    );
+  };
+
+  const aqiStyle = getAqiStyle(usAqi ?? -1);
+
+  return (
+    <div className="mb-5 md:mb-8 rounded-[14px] bg-[var(--c-card)] overflow-hidden">
+      {/* AQI header bar */}
+      {usAqi != null && (
+        <div className={`px-3 py-2 flex items-center justify-between border-b border-[var(--c-sep)]/60 ${aqiStyle.bg}`}>
+          <span className={`text-[11px] md:text-[13px] font-semibold ${aqiStyle.color}`}>
+            US AQI {usAqi} — {aqiStyle.label}
+          </span>
+          <span className="text-[11px] text-[var(--c-text-3)]">
+            {aqiSource === "aqicn" ? "AQICN" : "AirVisual"} · {"\u0E1E\u0E23\u0E30\u0E1B\u0E23\u0E30\u0E41\u0E14\u0E07"}
+          </span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-5 divide-x divide-[var(--c-sep)]">
+        {weekDays.map((day, i) => {
+          const key = formatDateKey(day);
+          const w = weatherData.find((wd) => wd.date === key);
+          const entry = schedule[key];
+          const todayFlag = isSameDay(day, today);
+
+          return (
+            <div
+              key={i}
+              className={`px-1 py-2.5 md:px-3 md:py-3 text-center ${todayFlag ? "bg-[var(--c-accent)]/8" : ""}`}
+            >
+              {/* Day + Date */}
+              <div className={`text-[11px] md:text-[13px] font-semibold ${todayFlag ? "text-[var(--c-accent)]" : "text-[var(--c-text-2)]"}`}>
+                {MINI_DAYS[i]} <span className={`font-normal ${todayFlag ? "text-[var(--c-accent)]/70" : "text-[var(--c-text-3)]"}`}>{day.getDate()}/{day.getMonth() + 1}</span>
+              </div>
+
+              {/* Weather: temp + icon */}
+              {w ? (
+                <div className="flex items-center justify-center gap-0.5 mt-1.5">
+                  <Emoji char={getWeatherIcon(w.weatherCode)} size={18} />
+                  <span className="text-[13px] md:text-[15px] font-semibold text-[var(--c-text)]">{w.tempMax}{"\u00B0"}</span>
+                </div>
+              ) : loading ? (
+                <div className="text-[11px] text-[var(--c-text-3)] mt-1.5 animate-pulse">...</div>
+              ) : (
+                <div className="text-[11px] text-[var(--c-text-3)] mt-1.5">{"\u2014"}</div>
+              )}
+
+              {/* Divider */}
+              <div className="border-t border-[var(--c-sep)]/40 my-2" />
+
+              {/* Driver summary */}
+              <div className="space-y-0.5">
+                <div className="flex items-center justify-center gap-1">
+                  <Emoji char="☀️" size={10} />
+                  {entry?.morning ? driverMini(entry.morning) : <span className="text-[var(--c-text-4)] text-[10px]">{"\u2014"}</span>}
+                </div>
+                <div className="flex items-center justify-center gap-1">
+                  <Emoji char="🌙" size={10} />
+                  {entry?.evening ? driverMini(entry.evening) : <span className="text-[var(--c-text-4)] text-[10px]">{"\u2014"}</span>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
