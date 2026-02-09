@@ -154,6 +154,8 @@ export async function GET(req: NextRequest) {
     const now = new Date();
     const thNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
     const forceWeekly = req.nextUrl.searchParams.get("weekly") === "1";
+    const startParam = req.nextUrl.searchParams.get("start"); // YYYY-MM-DD
+    const onlyWeekly = req.nextUrl.searchParams.get("only") === "weekly";
     const isSunday = thNow.getUTCDay() === 0;
 
     // Tomorrow
@@ -166,22 +168,29 @@ export async function GET(req: NextRequest) {
     const sent: string[] = [];
 
     // Sunday (or forced) → send weekly overview first
-    if (isSunday || forceWeekly) {
-      // Find next Monday
-      const dow = thNow.getUTCDay();
-      const daysToMon = dow === 0 ? 1 : 8 - dow;
-      const mon = new Date(thNow);
-      mon.setUTCDate(mon.getUTCDate() + daysToMon);
-      const monday = new Date(mon.getUTCFullYear(), mon.getUTCMonth(), mon.getUTCDate());
+    if (isSunday || forceWeekly || startParam) {
+      let monday: Date;
+      if (startParam) {
+        const [y, m, d] = startParam.split("-").map(Number);
+        monday = new Date(y, m - 1, d);
+      } else {
+        const dow = thNow.getUTCDay();
+        const daysToMon = dow === 0 ? 1 : 8 - dow;
+        const mon = new Date(thNow);
+        mon.setUTCDate(mon.getUTCDate() + daysToMon);
+        monday = new Date(mon.getUTCFullYear(), mon.getUTCMonth(), mon.getUTCDate());
+      }
       const weeklyMsg = buildWeeklyMessage(monday, schedule);
       await sendLine(token, groupId, weeklyMsg);
       sent.push("weekly");
     }
 
-    // Every day → send daily for tomorrow
-    const dailyMsg = buildDailyMessage(tomorrowDate, schedule?.[dateKey] || null);
-    await sendLine(token, groupId, dailyMsg);
-    sent.push("daily");
+    // Every day → send daily for tomorrow (skip if only=weekly)
+    if (!onlyWeekly) {
+      const dailyMsg = buildDailyMessage(tomorrowDate, schedule?.[dateKey] || null);
+      await sendLine(token, groupId, dailyMsg);
+      sent.push("daily");
+    }
 
     return NextResponse.json({ status: "sent", sent, dateKey });
   } catch (e) {
