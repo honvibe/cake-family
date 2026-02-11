@@ -22,6 +22,7 @@ const TWEMOJI: Record<string, string> = {
   "✨": "2728",
   "📋": "1f4cb",
   "🧳": "1f9f3",
+  "🎬": "1f3ac",
 };
 
 const BASE = "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg";

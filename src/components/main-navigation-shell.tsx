@@ -11,16 +11,21 @@ const NAV_ITEMS = [
   { href: "/driver", label: "Driver", icon: "🚗", sub: "" },
   { href: "/price-tracker", label: "Price Tracker", icon: "🏷️", sub: "" },
   { href: "/travel/tokyo2026", label: "Tokyo 2026", icon: "✈️", sub: "Travel" },
+  { href: "/watchlist", label: "Watchlist", icon: "🎬", sub: "" },
 ];
 
 export default function MainNavigationShell({
   children,
   title = "Cake Family",
+  hideNav = false,
 }: {
   children: ReactNode;
   title?: string;
+  hideNav?: boolean;
 }) {
   const pathname = usePathname();
+  const isShareRoute = pathname.startsWith("/tokyotripplan");
+  const shouldHideNav = hideNav || isShareRoute;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeMode>("dark");
 
@@ -37,6 +42,27 @@ export default function MainNavigationShell({
     localStorage.setItem("ui-theme", next);
     document.documentElement.classList.toggle("dark", next === "dark");
   };
+
+  if (shouldHideNav) {
+    return (
+      <div className="min-h-screen bg-[var(--c-bg)]">
+        <header className="sticky top-0 z-40 bg-[var(--c-glass)] backdrop-blur-xl backdrop-saturate-[1.8] border-b border-[var(--c-sep)]">
+          <div className="flex items-center justify-between px-4 h-11 md:h-12 md:px-8">
+            <h1 className="text-[17px] md:text-[19px] font-semibold tracking-tight text-[var(--c-text)]">
+              {title}
+            </h1>
+            <button
+              onClick={toggleTheme}
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[var(--c-fill-3)] transition-colors active:bg-[var(--c-fill-2)]"
+            >
+              <Emoji char={theme === "dark" ? "🌙" : "☀️"} size={18} />
+            </button>
+          </div>
+        </header>
+        <main className="px-4 py-5 md:px-8 md:py-6">{children}</main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--c-bg)]">

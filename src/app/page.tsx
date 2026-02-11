@@ -500,6 +500,7 @@ export default function Home() {
     { id: "schedule" as const, label: "ตารางรับส่ง", icon: "🚗", enabled: true },
     { id: "price" as const, label: "ติดตามราคา", icon: "🏷️", enabled: true },
     { id: "travel" as const, label: "Travel", icon: "✈️", enabled: true },
+    { id: "watchlist" as const, label: "Watchlist", icon: "🎬", enabled: true },
   ];
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
@@ -563,6 +564,7 @@ export default function Home() {
                   if (item.id === "schedule") window.location.href = "/driver";
                   if (item.id === "price") window.location.href = "/price-tracker";
                   if (item.id === "travel") window.location.href = "/travel/tokyo2026";
+                  if (item.id === "watchlist") window.location.href = "/watchlist";
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-[10px] text-[17px] transition-all ${
                   activeTab === item.id && item.enabled

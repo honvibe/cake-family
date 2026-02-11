@@ -2,7 +2,8 @@
 
 import MainNavigationShell from "@/components/main-navigation-shell";
 import HotelCard from "@/components/hotel-card";
-import Link from "next/link";
+import CurrencyTracker from "@/components/currency-tracker";
+import { TokyoDayGrid } from "@/components/tokyo-nav";
 import { useState } from "react";
 
 type TabId = "plan" | "baggage" | "highlights";
@@ -154,10 +155,11 @@ const ZONES: Zone[] = [
 
 const TOTAL_SHOPS = ZONES.reduce((sum, z) => sum + z.shops.length, 0);
 
-type HighlightSubTab = "food" | "shopping";
+type HighlightSubTab = "food" | "shopping" | "currency";
 
 const HIGHLIGHT_SUBS: { id: HighlightSubTab; label: string }[] = [
   { id: "food", label: "ร้านอาหาร" },
+  { id: "currency", label: "อัตราแลกเปลี่ยน" },
   { id: "shopping", label: "ช้อปปิ้ง" },
 ];
 
@@ -198,17 +200,7 @@ export default function Tokyo2026Page() {
         {/* ======== Plan Tab ======== */}
         {activeTab === "plan" && (
           <div className="space-y-6">
-            <div className="grid grid-cols-4 md:grid-cols-8 gap-2.5 md:gap-3">
-              {DAYS.map((label, i) => (
-                <Link
-                  key={label}
-                  href={`/travel/tokyo2026/day-${i + 1}`}
-                  className="rounded-[14px] border border-[var(--c-sep)] bg-[var(--c-card)] px-3 py-3 text-center text-[var(--c-text)] hover:bg-[var(--c-fill-3)] transition-all"
-                >
-                  <div className="text-[13px] font-semibold leading-tight">{label}</div>
-                </Link>
-              ))}
-            </div>
+            <TokyoDayGrid days={DAYS} />
 
             <HotelCard hotel={HOTEL} />
 
@@ -341,6 +333,9 @@ export default function Tokyo2026Page() {
                 ))}
               </div>
             )}
+
+            {/* --- Currency sub-tab --- */}
+            {highlightSub === "currency" && <CurrencyTracker />}
 
             {/* --- Shopping sub-tab --- */}
             {highlightSub === "shopping" && (

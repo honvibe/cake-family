@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "Bash(curl:*)",
+      "Bash(lsof:*)",
+      "Bash(npm run dev:*)",
+      "Bash(kill:*)",
+      "Bash(vercel env pull:*)",
+      "Bash(pkill:*)",
+      "Bash(vercel:*)",
+      "Bash(python3:*)",
+      "Bash(brew install:*)",
+      "Bash(pdftoppm:*)",
+      "Bash(pdftotext:*)",
+      "Bash(GIT_AUTHOR_EMAIL=\"\" GIT_COMMITTER_EMAIL=\"\" vercel:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
