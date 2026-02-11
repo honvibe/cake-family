@@ -5,6 +5,7 @@ import HotelCard from "@/components/hotel-card";
 import CurrencyTracker from "@/components/currency-tracker";
 import { TokyoDayGrid } from "@/components/tokyo-nav";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 type TabId = "plan" | "baggage" | "highlights";
 
@@ -155,15 +156,56 @@ const ZONES: Zone[] = [
 
 const TOTAL_SHOPS = ZONES.reduce((sum, z) => sum + z.shops.length, 0);
 
-type HighlightSubTab = "food" | "shopping" | "currency";
+type HighlightSubTab = "food" | "near" | "shopping" | "budget" | "currency";
 
 const HIGHLIGHT_SUBS: { id: HighlightSubTab; label: string }[] = [
   { id: "food", label: "ร้านอาหาร" },
-  { id: "currency", label: "อัตราแลกเปลี่ยน" },
-  { id: "shopping", label: "ช้อปปิ้ง" },
+  { id: "near", label: "ใกล้ รร." },
+  { id: "shopping", label: "รองเท้า" },
+  { id: "budget", label: "งบประมาณ" },
+  { id: "currency", label: "แลกเงิน" },
+];
+
+const NEAR_HOTEL = [
+  { name: "Ichikatsu (いちかつ)", icon: "🐷", tag: "แนะนำ อันดับ 1!", style: "หมูทอดทงคัตสึ", highlight: "หมูชิ้นใหญ่ แป้งกรอบ ไม่อมน้ำมัน ราคาถูกและคุ้มมาก", price: "700-1,000 เยน", distance: "เดิน 1-2 นาที", mapQuery: "Ichikatsu+Asakusabashi" },
+  { name: "Torikizoku (鳥貴族)", icon: "🍢", tag: "ครอบครัว", style: "ไก่ย่างเสียบไม้ Yakitori", highlight: "ทุกเมนูราคาเดียว 360 เยน! ทั้งอาหารและเครื่องดื่ม เมนูมีรูปภาพ สั่งง่าย", price: "ทุกเมนู 360 เยน", distance: "ชั้น 6 ตึกใกล้สถานี", mapQuery: "Torikizoku+Asakusabashi" },
+  { name: "Yamagasa no Ryu (山笠ノ龍)", icon: "🍜", tag: "เปิดดึก", style: "ราเมงทงคตสึแบบฮากาตะ", highlight: "เส้นเล็ก ซุปเข้มข้น ต้นตำรับ เปิดถึงตี 4! เหมาะมื้อดึก", price: "~900-1,200 เยน", distance: "ใกล้สถานี", mapQuery: "Yamagasa+no+Ryu+Asakusabashi" },
+  { name: "Yoshinoya (吉野家)", icon: "🍚", tag: "24 ชม.", style: "ข้าวหน้าเนื้อต้ม Gyudon", highlight: "เร็ว อร่อย ประหยัด เปิด 24 ชั่วโมง — ที่พึ่งยามดึกหรือเช้าตรู่", price: "~400-600 เยน", distance: "ตรงข้ามสถานีเลย", mapQuery: "Yoshinoya+Asakusabashi" },
+  { name: "Hanamasa (肉のハナマサ)", icon: "🛒", tag: "ซุปเปอร์ 24 ชม.", style: "ซุปเปอร์มาร์เก็ตขายส่ง", highlight: "เปิด 24 ชม. ของเยอะมาก เนื้อสัตว์ ผัก ผลไม้ ราคาถูกกว่าร้านสะดวกซื้อ แวะซื้อน้ำ/ขนม/สตรอว์เบอร์รี่ตุนเข้าตู้เย็นได้", price: "ราคาส่ง", distance: "เดิน 3-5 นาที", mapQuery: "Hanamasa+Asakusabashi" },
+];
+
+const SHOE_COMPARE = [
+  { brand: "On Cloud", icon: "☁️", models: [
+    { name: "Cloud 5 / Cloud 6", thPrice: "5,500-6,000", jpPrice: "17,380-18,700 เยน (~4,100-4,400)", taxFree: "~3,700-4,000", save: "~1,500-2,000" },
+    { name: "Cloudmonster (พื้นหนา)", thPrice: "6,800-7,000", jpPrice: "19,800-22,000 เยน (~4,700-5,200)", taxFree: "~4,200-4,700", save: "~1,500-2,000" },
+  ]},
+  { brand: "New Balance", icon: "👟", models: [
+    { name: "530 (ฮิตตลอดกาล)", thPrice: "3,990", jpPrice: "12,980 เยน (~3,100)", taxFree: "~2,800", save: "~1,200" },
+    { name: "2002R / 1906R (สายแฟชั่น)", thPrice: "5,400-5,900", jpPrice: "19,800 เยน (~4,750)", taxFree: "~4,200-4,300", save: "~1,100-1,600" },
+  ]},
+];
+
+const BUDGET = [
+  { category: "จ่ายแล้ว", items: [
+    { name: "ค่าตั๋วเครื่องบิน + ประกัน", amount: 42187 },
+    { name: "กระเป๋า + ที่นั่ง", amount: 10513 },
+    { name: "Air Asia อาหารขากลับ", amount: 888 },
+    { name: "ค่าที่พัก (5,500 x 7 คืน)", amount: 39901 },
+    { name: "Tokyo DisneySea", amount: 5580 },
+    { name: "ค่ารถไฟไปฟูจิ", amount: 1480 },
+  ]},
+  { category: "ประมาณการ", items: [
+    { name: "ค่ากิน (7 วัน 3 มื้อ มื้อละ 1,000)", amount: 21000 },
+    { name: "ค่าเดินทาง", amount: 20000 },
+    { name: "ค่าตั๋วเข้าชม", amount: 20000 },
+    { name: "ช้อปปิ้ง & ของฝาก", amount: 20000 },
+    { name: "ประกัน & อื่นๆ", amount: 5000 },
+  ]},
 ];
 
 export default function Tokyo2026Page() {
+  const pathname = usePathname();
+  const isPublic = pathname.startsWith("/tokyotripplan");
   const [activeTab, setActiveTab] = useState<TabId>("plan");
   const [expandedZone, setExpandedZone] = useState<string | null>(null);
   const [highlightSub, setHighlightSub] = useState<HighlightSubTab>("food");
@@ -179,26 +221,28 @@ export default function Tokyo2026Page() {
           <p className="text-[14px] text-[var(--c-text-2)] mt-1">1 - 8 Mar 2026</p>
         </div>
 
-        {/* Tab Bar */}
-        <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1 -mx-1 px-1">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
-                activeTab === tab.id
-                  ? "bg-[var(--c-accent)] text-white"
-                  : "bg-[var(--c-fill-2)] text-[var(--c-text-2)] hover:bg-[var(--c-fill)]"
-              }`}
-            >
-              <span className="text-[15px]">{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* Tab Bar (hidden on public share link) */}
+        {!isPublic && (
+          <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1 -mx-1 px-1">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[14px] font-medium whitespace-nowrap transition-all ${
+                  activeTab === tab.id
+                    ? "bg-[var(--c-accent)] text-white"
+                    : "bg-[var(--c-fill-2)] text-[var(--c-text-2)] hover:bg-[var(--c-fill)]"
+                }`}
+              >
+                <span className="text-[15px]">{tab.icon}</span>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* ======== Plan Tab ======== */}
-        {activeTab === "plan" && (
+        {(isPublic || activeTab === "plan") && (
           <div className="space-y-6">
             <TokyoDayGrid days={DAYS} />
 
@@ -212,7 +256,7 @@ export default function Tokyo2026Page() {
         )}
 
         {/* ======== Baggage Tab ======== */}
-        {activeTab === "baggage" && (
+        {!isPublic && activeTab === "baggage" && (
           <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-6">
             <p className="text-[16px] font-semibold text-[var(--c-text)]">Baggage Checklist</p>
             <p className="text-[13px] text-[var(--c-text-2)] mt-1">
@@ -222,7 +266,7 @@ export default function Tokyo2026Page() {
         )}
 
         {/* ======== Highlights Tab ======== */}
-        {activeTab === "highlights" && (
+        {!isPublic && activeTab === "highlights" && (
           <div className="space-y-5">
             {/* Sub-tab bar */}
             <div className="flex gap-1 border-b border-[var(--c-sep)] -mb-1">
@@ -334,18 +378,143 @@ export default function Tokyo2026Page() {
               </div>
             )}
 
-            {/* --- Currency sub-tab --- */}
-            {highlightSub === "currency" && <CurrencyTracker />}
+            {/* --- Near Hotel sub-tab --- */}
+            {highlightSub === "near" && (
+              <div className="space-y-5">
+                <div className="rounded-[18px] border border-[#FF9F0A]/40 bg-[#FF9F0A]/5 p-5 md:p-7">
+                  <p className="text-[22px] md:text-[28px] font-bold text-[var(--c-text)] leading-tight">ร้านอาหารใกล้โรงแรม</p>
+                  <p className="text-[14px] text-[var(--c-text-2)] mt-1">แถว Asakusabashi &middot; เดินไม่ถึง 5 นาที &middot; ราคาประหยัด</p>
+                </div>
+                <div className="space-y-3">
+                  {NEAR_HOTEL.map((r) => (
+                    <div key={r.name} className={`rounded-[16px] border p-4 md:p-5 ${r.tag === "แนะนำ อันดับ 1!" ? "border-[#FF9F0A]/30 bg-[#FF9F0A]/5" : "border-[var(--c-sep)] bg-[var(--c-card-alt)]"}`}>
+                      <div className="flex items-center gap-2.5 flex-wrap mb-2">
+                        <span className="text-[22px]">{r.icon}</span>
+                        <span className="text-[16px] font-semibold text-[var(--c-text)]">{r.name}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          r.tag === "แนะนำ อันดับ 1!" ? "bg-[#FF9F0A]/15 text-[#FF9F0A]" :
+                          r.tag === "24 ชม." || r.tag === "ซุปเปอร์ 24 ชม." ? "bg-[#30D158]/15 text-[#30D158]" :
+                          r.tag === "เปิดดึก" ? "bg-[#BF5AF2]/15 text-[#BF5AF2]" :
+                          "bg-[#64D2FF]/15 text-[#64D2FF]"
+                        }`}>{r.tag}</span>
+                      </div>
+                      <p className="text-[13px] text-[var(--c-text-2)] mb-1">{r.style}</p>
+                      <p className="text-[14px] text-[var(--c-text)] leading-relaxed">{r.highlight}</p>
+                      <div className="flex items-center gap-4 mt-3 flex-wrap">
+                        <span className="text-[13px] font-semibold text-[var(--c-accent)]">{r.price}</span>
+                        <span className="text-[12px] text-[var(--c-text-2)]">{r.distance}</span>
+                        <a href={`https://www.google.com/maps/search/?api=1&query=${r.mapQuery}`} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium bg-[var(--c-accent)]/10 text-[var(--c-accent)] hover:bg-[var(--c-accent)]/20 transition-colors ml-auto">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                          แผนที่
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-[12px] border border-[#30D158]/25 bg-[#30D158]/5 p-4">
+                  <p className="text-[13px] text-[#30D158] font-medium">Tip: LIFE Kanda-Izumicho ซุปเปอร์ใหญ่ ของครบ ถูกกว่าร้านสะดวกซื้อ แวะซื้อน้ำ/ขนม/สตรอว์เบอร์รี่ตุนเข้าตู้เย็นได้เลย</p>
+                </div>
+              </div>
+            )}
 
             {/* --- Shopping sub-tab --- */}
             {highlightSub === "shopping" && (
-              <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-6">
-                <p className="text-[16px] font-semibold text-[var(--c-text)]">โซนช้อปปิ้ง</p>
-                <p className="text-[13px] text-[var(--c-text-2)] mt-1">
-                  สามารถเพิ่มข้อมูลแหล่งช้อปปิ้งได้ต่อทันที
-                </p>
+              <div className="space-y-5">
+                <div className="rounded-[18px] border border-[#BF5AF2]/40 bg-[#BF5AF2]/5 p-5 md:p-7">
+                  <p className="text-[22px] md:text-[28px] font-bold text-[var(--c-text)] leading-tight">เปรียบเทียบราคารองเท้า</p>
+                  <p className="text-[14px] text-[var(--c-text-2)] mt-1">ญี่ปุ่น vs ไทย &middot; ทำ Tax Free ประหยัดเพิ่ม 10%</p>
+                </div>
+
+                {SHOE_COMPARE.map((brand) => (
+                  <div key={brand.brand} className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-4 md:p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-[22px]">{brand.icon}</span>
+                      <p className="text-[18px] font-semibold text-[var(--c-text)]">{brand.brand}</p>
+                    </div>
+                    <div className="space-y-3">
+                      {brand.models.map((m) => (
+                        <div key={m.name} className="rounded-[12px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] p-4">
+                          <p className="text-[14px] font-semibold text-[var(--c-text)] mb-3">{m.name}</p>
+                          <div className="grid grid-cols-2 gap-2.5">
+                            <div className="rounded-[8px] bg-[var(--c-fill-3)] p-3">
+                              <p className="text-[11px] text-[var(--c-text-2)]">ราคาไทย</p>
+                              <p className="text-[15px] font-semibold text-[var(--c-text)]">{m.thPrice} บาท</p>
+                            </div>
+                            <div className="rounded-[8px] bg-[var(--c-fill-3)] p-3">
+                              <p className="text-[11px] text-[var(--c-text-2)]">ราคาญี่ปุ่น</p>
+                              <p className="text-[15px] font-semibold text-[var(--c-text)]">{m.jpPrice}</p>
+                            </div>
+                            <div className="rounded-[8px] bg-[#30D158]/8 border border-[#30D158]/20 p-3">
+                              <p className="text-[11px] text-[#30D158]">Tax Free (ลด 10%)</p>
+                              <p className="text-[15px] font-semibold text-[#30D158]">{m.taxFree} บาท</p>
+                            </div>
+                            <div className="rounded-[8px] bg-[#FF9F0A]/8 border border-[#FF9F0A]/20 p-3">
+                              <p className="text-[11px] text-[#FF9F0A]">ประหยัดได้</p>
+                              <p className="text-[15px] font-semibold text-[#FF9F0A]">{m.save} บาท</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                <div className="rounded-[12px] border border-[#30D158]/25 bg-[#30D158]/5 p-4">
+                  <p className="text-[14px] font-semibold text-[#30D158] mb-2">ซื้อที่ไหนดี?</p>
+                  <div className="space-y-1.5">
+                    <p className="text-[13px] text-[var(--c-text)]">ABC-MART (Yodobashi ชั้น 7) — รุ่นใหม่ ใส่สบาย</p>
+                    <p className="text-[13px] text-[var(--c-text)]">London Sports (Ameyoko) — กองรองเท้าราคาถูก คู่ละ 500-800 บาท</p>
+                    <p className="text-[13px] text-[var(--c-text)]">New Balance สาขาใหญ่ — มีรุ่น Limited ที่ไทยหาไม่ได้</p>
+                  </div>
+                </div>
               </div>
             )}
+
+            {/* --- Budget sub-tab --- */}
+            {highlightSub === "budget" && (
+              <div className="space-y-5">
+                <div className="rounded-[18px] border border-[#30D158]/40 bg-[#30D158]/5 p-5 md:p-7">
+                  <p className="text-[22px] md:text-[28px] font-bold text-[var(--c-text)] leading-tight">งบประมาณทริป</p>
+                  <p className="text-[14px] text-[var(--c-text-2)] mt-1">8 วัน 7 คืน &middot; 4 คน &middot; สรุปค่าใช้จ่าย</p>
+                </div>
+
+                {BUDGET.map((section) => {
+                  const total = section.items.reduce((s, item) => s + item.amount, 0);
+                  return (
+                    <div key={section.category} className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-4 md:p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <p className="text-[18px] font-semibold text-[var(--c-text)]">{section.category}</p>
+                        <span className={`px-3 py-1 rounded-full text-[13px] font-bold ${
+                          section.category === "จ่ายแล้ว" ? "bg-[#30D158]/10 text-[#30D158]" : "bg-[#FF9F0A]/10 text-[#FF9F0A]"
+                        }`}>{total.toLocaleString()} บาท</span>
+                      </div>
+                      <div className="space-y-2">
+                        {section.items.map((item) => (
+                          <div key={item.name} className="flex items-center justify-between rounded-[10px] bg-[var(--c-subtle-card)] border border-[var(--c-sep)] px-4 py-3">
+                            <span className="text-[14px] text-[var(--c-text)]">{item.name}</span>
+                            <span className="text-[14px] font-semibold text-[var(--c-text)] whitespace-nowrap">{item.amount.toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div className="rounded-[16px] border border-[var(--c-accent)]/30 bg-[var(--c-accent-bg)] p-5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[18px] font-bold text-[var(--c-text)]">รวมทั้งหมด</p>
+                    <p className="text-[22px] font-bold text-[var(--c-accent)]">
+                      {(BUDGET[0].items.reduce((s, i) => s + i.amount, 0) + BUDGET[1].items.reduce((s, i) => s + i.amount, 0)).toLocaleString()} บาท
+                    </p>
+                  </div>
+                  <p className="text-[13px] text-[var(--c-text-2)] mt-1">จ่ายแล้ว {BUDGET[0].items.reduce((s, i) => s + i.amount, 0).toLocaleString()} &middot; เหลือประมาณ {BUDGET[1].items.reduce((s, i) => s + i.amount, 0).toLocaleString()}</p>
+                </div>
+              </div>
+            )}
+
+            {/* --- Currency sub-tab --- */}
+            {highlightSub === "currency" && <CurrencyTracker />}
           </div>
         )}
       </div>

@@ -800,10 +800,643 @@ export default async function TokyoDayPage({
               </div>
             </div>
           </div>
+        ) : dayNumber === 5 ? (
+          <div className="space-y-5">
+            {/* Header */}
+            <div className="rounded-[18px] border border-[#30D158]/40 bg-[#30D158]/5 p-5 md:p-7">
+              <p className="text-[24px] md:text-[34px] font-bold text-[var(--c-text)] leading-tight">Day 5: Kamakura</p>
+              <p className="text-[14px] mt-2 text-[var(--c-text-2)]">วันพฤหัสบดี 5 มีนาคม 2026 — ตามรอยซีรีส์ &middot; ไข่ฟูฟ่อง &middot; พระใหญ่ &middot; ถนนขนม</p>
+              <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { label: "ธีม", value: "ตามรอยซีรีส์ & ทะเล", icon: "⛩️" },
+                  { label: "โซน", value: "Kamakura & Hase", icon: "📍" },
+                  { label: "ตั๋วพิเศษ", value: "Enoden Pass 800¥", icon: "🎫" },
+                  { label: "มื้อเด็ด", value: "ไข่ฟูฟ่อง Yoridokoro", icon: "🍳" },
+                ].map((card) => (
+                  <div key={card.label} className="rounded-[14px] border border-[#30D158]/25 bg-[#30D158]/8 p-4">
+                    <span className="text-[20px]">{card.icon}</span>
+                    <p className="text-[12px] text-[var(--c-text-2)] mt-2">{card.label}</p>
+                    <p className="text-[14px] font-semibold text-[var(--c-text)] mt-0.5">{card.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Timeline */}
+            <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-5">ไทม์ไลน์ Day 5</p>
+              <div className="relative space-y-0">
+                {[
+                  { time: "08:30", icon: "🚃", title: "ออกจากโรงแรม นั่ง JR ไป Kamakura", note: "JR Yokosuka Line จาก Asakusabashi → Kamakura (~1.5 ชม.)", phase: "travel" as const },
+                  { time: "10:00", icon: "🎫", title: "ถึงสถานี Kamakura — ซื้อ Enoden Pass", note: "ซื้อที่ตู้ขายตั๋วรถไฟสายสีเขียว (800 เยน) นั่งได้ทั้งวัน!", phase: "travel" as const },
+                  { time: "10:15", icon: "🚋", title: "นั่ง Enoden ไปลง Inamuragasaki", note: "รถไฟสายวิวทะเลสุดคลาสสิก", phase: "travel" as const },
+                  { time: "10:30", icon: "📝", title: "ภารกิจ \"จองโต๊ะ\" Cafe Yoridokoro", note: "เดิน 2 นาทีจากสถานี ลงชื่อจองคิวทันที! พนักงานอาจแจ้งรอ 1.5-2 ชม. แล้วแว๊บไปเที่ยวก่อน", phase: "food" as const, mapQuery: "Cafe+Yoridokoro+Inamuragasaki+Kamakura" },
+                  { time: "10:45", icon: "🚋", title: "วาร์ปไป Hase ตามรอยซีรีส์", note: "นั่ง Enoden จาก Inamuragasaki ไป Hase (2 สถานี / 4 นาที)", phase: "series" as const },
+                  { time: "11:00", icon: "⛩️", title: "Goryo Shrine — ศาลเจ้าโกเรียว", note: "จุดถ่ายรถไฟวิ่งผ่านหน้าเสาประตู (Unseen สุดๆ!) + Tanaka Barber Shop ร้านตัดผมฉากสำคัญ", phase: "series" as const, mapQuery: "Goryo+Shrine+Kamakura" },
+                  { time: "12:10", icon: "🚋", title: "นั่งรถไฟจาก Hase กลับ Inamuragasaki", note: "ใช้ Enoden Pass นั่งวนได้ไม่จำกัด คุ้มแล้ว!", phase: "travel" as const },
+                  { time: "12:30", icon: "🍳", title: "มื้อเที่ยง: Cafe Yoridokoro", note: "ตีไข่ขาวให้ฟูฟ่องกับลูกๆ + ถ่ายรูปคู่รถไฟวิ่งผ่านหน้าต่าง + ปลาแดดเดียวหอมๆ", phase: "food" as const },
+                  { time: "13:45", icon: "🙏", title: "พระใหญ่ Kotoku-in (Great Buddha)", note: "นั่ง Enoden กลับไป Hase → เดินไปวัด ไหว้ขอพร ถ่ายรูป มุดเข้าตัวองค์พระ", phase: "temple" as const, mapQuery: "Kotoku-in+Great+Buddha+Kamakura" },
+                  { time: "15:00", icon: "🍡", title: "ถนน Komachi-dori — ช้อปปิ้ง & ขนม", note: "นั่ง Enoden กลับสถานี Kamakura → เดินเข้าถนนขนมเลย!", phase: "shopping" as const, mapQuery: "Komachi-dori+Kamakura" },
+                  { time: "17:00", icon: "🚃", title: "เดินทางกลับ JR Yokosuka Line", note: "ต้นสายที่ Kamakura ได้นั่งแน่นอน → ยิงยาวกลับ Asakusabashi", phase: "travel" as const },
+                  { time: "18:30", icon: "🏨", title: "ถึงโรงแรม พักผ่อน", note: "ถึงก่อนค่ำ เด็กๆ ไม่เหนื่อยจนเกินไป พร้อมลุยวันรุ่งขึ้น!", phase: "travel" as const },
+                ].map((row, i, arr) => (
+                  <div key={`${row.time}-${row.title}`} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0 ${
+                        row.phase === "series" ? "bg-[#BF5AF2]/10 ring-2 ring-[#BF5AF2]/30" :
+                        row.phase === "food" ? "bg-[#FF9F0A]/10 ring-2 ring-[#FF9F0A]/30" :
+                        row.phase === "temple" ? "bg-[#30D158]/10 ring-2 ring-[#30D158]/30" :
+                        row.phase === "shopping" ? "bg-[#FF6482]/10 ring-2 ring-[#FF6482]/30" :
+                        "bg-[var(--c-accent)]/10 ring-2 ring-[var(--c-accent)]/30"
+                      }`}>
+                        {row.icon}
+                      </div>
+                      {i < arr.length - 1 && (
+                        <div className={`w-[2px] flex-1 min-h-[20px] ${
+                          row.phase === "series" ? "bg-[#BF5AF2]/20" :
+                          row.phase === "food" ? "bg-[#FF9F0A]/20" :
+                          row.phase === "temple" ? "bg-[#30D158]/20" :
+                          row.phase === "shopping" ? "bg-[#FF6482]/20" :
+                          "bg-[var(--c-sep)]"
+                        }`} />
+                      )}
+                    </div>
+                    <div className="pb-5 min-w-0 flex-1">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <span className={`text-[15px] font-bold ${
+                          row.phase === "series" ? "text-[#BF5AF2]" :
+                          row.phase === "food" ? "text-[#FF9F0A]" :
+                          row.phase === "temple" ? "text-[#30D158]" :
+                          row.phase === "shopping" ? "text-[#FF6482]" :
+                          "text-[var(--c-accent)]"
+                        }`}>{row.time}</span>
+                        {row.phase === "series" && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#BF5AF2]/15 text-[#BF5AF2]">ตามรอยซีรีส์</span>
+                        )}
+                        {row.phase === "food" && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">อาหาร</span>
+                        )}
+                      </div>
+                      <p className="text-[16px] font-semibold text-[var(--c-text)] mt-1 leading-tight">{row.title}</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] mt-1 leading-relaxed">{row.note}</p>
+                      {"mapQuery" in row && row.mapQuery && (
+                        <a href={`https://www.google.com/maps/search/?api=1&query=${row.mapQuery}`} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-full text-[12px] font-medium bg-[var(--c-accent)]/10 text-[var(--c-accent)] hover:bg-[var(--c-accent)]/20 transition-colors">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                          เปิดแผนที่
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Series Locations */}
+            <div className="rounded-[16px] border border-[#BF5AF2]/30 bg-[#BF5AF2]/5 p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">จุดตามรอยซีรีส์ที่ Hase (10:45-12:10)</p>
+              <p className="text-[13px] text-[var(--c-text-2)] mb-4">ใกล้สถานี Hase มาก เดินถ่ายรูปช้าๆ ฆ่าเวลาได้พอดีเป๊ะ</p>
+              <div className="space-y-2.5">
+                {[
+                  { name: "Goryo Shrine (ศาลเจ้าโกเรียว)", desc: "ศาลเจ้าที่มีรถไฟวิ่งผ่านหน้าประตู — Unseen สุดๆ! จุดถ่ายรูปยอดฮิต", icon: "⛩️", mapQuery: "Goryo+Shrine+Kamakura" },
+                  { name: "Tanaka Barber Shop", desc: "ร้านตัดผมฉากสำคัญ อยู่ติดกับศาลเจ้าเลย", icon: "💈", mapQuery: "Tanaka+Barber+Shop+Hase+Kamakura" },
+                ].map((r) => (
+                  <div key={r.name} className="rounded-[12px] border border-[#BF5AF2]/25 bg-[#BF5AF2]/5 p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[16px]">{r.icon}</span>
+                      <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
+                    </div>
+                    <p className="text-[13px] text-[var(--c-text-2)]">{r.desc}</p>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${r.mapQuery}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-full text-[12px] font-medium bg-[var(--c-accent)]/10 text-[var(--c-accent)] hover:bg-[var(--c-accent)]/20 transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                      เปิดแผนที่
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Komachi-dori Snacks */}
+            <div className="rounded-[16px] border border-[#FF6482]/30 bg-[#FF6482]/5 p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">ถนน Komachi-dori — ตามล่าของหวาน (15:00-17:00)</p>
+              <p className="text-[13px] text-[var(--c-text-2)] mb-4">เดินจากสถานี Kamakura เข้าถนนช้อปปิ้ง+ขนมเลย!</p>
+              <div className="space-y-2.5">
+                {[
+                  { name: "Kamakura Chacha", desc: "ไอติมมัทฉะเข้มข้น เลือกระดับความเข้มได้!", icon: "🍦", mapQuery: "Kamakura+Chacha+Komachi" },
+                  { name: "Giraffe Curry Pan", desc: "ขนมปังแกงกะหรี่ชีสยืดดด!", icon: "🍛", mapQuery: "Giraffe+Curry+Pan+Kamakura" },
+                  { name: "Kamakura Mameya", desc: "ร้านถั่วหลากรส มีให้ชิมฟรีเยอะมาก ซื้อกลับเป็นของฝากได้", icon: "🥜", mapQuery: "Kamakura+Mameya" },
+                  { name: "Sakura no Yumemiya", desc: "ดังโงะสีหวานๆ ถ่ายรูปสวย!", icon: "🍡", mapQuery: "Sakura+no+Yumemiya+Kamakura" },
+                ].map((r) => (
+                  <div key={r.name} className="rounded-[12px] border border-[#FF6482]/25 bg-[#FF6482]/5 p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[16px]">{r.icon}</span>
+                      <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
+                    </div>
+                    <p className="text-[13px] text-[var(--c-text-2)]">{r.desc}</p>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${r.mapQuery}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-full text-[12px] font-medium bg-[var(--c-accent)]/10 text-[var(--c-accent)] hover:bg-[var(--c-accent)]/20 transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                      เปิดแผนที่
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Transport */}
+            <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-4">การเดินทางวันนี้</p>
+              <div className="space-y-2.5">
+                {[
+                  { from: "Asakusabashi", to: "Kamakura", method: "JR Yokosuka Line (~1.5 ชม.)", cost: "~920 เยน/คน" },
+                  { from: "Kamakura ↔ Hase ↔ Inamuragasaki", to: "นั่งวนทั้งวัน", method: "Enoden Pass (เหมาจ่าย)", cost: "800 เยน/คน" },
+                  { from: "วัดพระใหญ่ Kotoku-in", to: "ค่าเข้าชม", method: "เข้าชม + มุดเข้าตัวองค์พระ", cost: "300 + 50 เยน" },
+                  { from: "Kamakura", to: "Asakusabashi", method: "JR Yokosuka Line (ต้นสาย ได้นั่ง!)", cost: "~920 เยน/คน" },
+                ].map((t, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-[10px] bg-[var(--c-subtle-card)] border border-[var(--c-sep)] px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-medium text-[var(--c-text)]">{t.from} &rarr; {t.to}</p>
+                      <p className="text-[12px] text-[var(--c-text-2)]">{t.method}</p>
+                    </div>
+                    <span className="text-[12px] font-semibold text-[var(--c-accent)] whitespace-nowrap text-right">{t.cost}</span>
+                  </div>
+                ))}
+                <div className="rounded-[10px] bg-[var(--c-accent)]/8 border border-[var(--c-accent)]/20 px-4 py-3">
+                  <p className="text-[14px] font-semibold text-[var(--c-text)]">รวมค่าใช้จ่ายทั้งวัน</p>
+                  <p className="text-[13px] text-[var(--c-accent)] font-bold">~4,070 เยน (ประมาณ 970 บาท)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="rounded-[16px] border border-[#30D158]/30 bg-[#30D158]/5 p-5">
+              <p className="text-[16px] font-semibold text-[#30D158] mb-3">ทริค Day 5</p>
+              <div className="space-y-2.5">
+                {[
+                  { icon: "📝", text: "Cafe Yoridokoro: ลงชื่อจองคิวก่อน แล้วแว๊บไปเที่ยวที่อื่น กลับมาพอดีเวลา!" },
+                  { icon: "🎫", text: "Enoden Pass 800 เยน คุ้มมาก! นั่งวนไปมา Kamakura ↔ Hase ↔ Inamuragasaki ได้ไม่จำกัด" },
+                  { icon: "📸", text: "Goryo Shrine: รอจังหวะรถไฟวิ่งผ่านหน้าเสาประตู ถ่ายรูปได้มุมสุด Unseen" },
+                  { icon: "🚃", text: "ขากลับ: JR Yokosuka Line ต้นสายที่ Kamakura ได้นั่งแน่นอน ไม่ต้องยืน" },
+                  { icon: "🍡", text: "Komachi-dori: อย่ากินอิ่มมาก! เพราะร้านขนมเยอะมาก เดินชิมไปเรื่อยๆ" },
+                ].map((tip, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <span className="text-[16px]">{tip.icon}</span>
+                    <p className="text-[14px] text-[var(--c-text)] leading-relaxed">{tip.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : dayNumber === 6 ? (
+          <div className="space-y-5">
+            {/* Header */}
+            <div className="rounded-[18px] border border-[#64D2FF]/40 bg-[#64D2FF]/5 p-5 md:p-7">
+              <p className="text-[24px] md:text-[34px] font-bold text-[var(--c-text)] leading-tight">Day 6: Fuji Kawaguchiko</p>
+              <p className="text-[14px] mt-2 text-[var(--c-text-2)]">วันศุกร์ 6 มีนาคม 2026 — รถบัส &middot; กระเช้าชมวิว &middot; Oishi Park &middot; ภูเขาไฟฟูจิ</p>
+              <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { label: "ธีม", value: "ภูเขาไฟฟูจิ", icon: "🗻" },
+                  { label: "การเดินทาง", value: "รถบัส ~2 ชม.", icon: "🚌" },
+                  { label: "ไฮไลท์", value: "กระเช้า + Oishi Park", icon: "🚠" },
+                  { label: "มื้อเด็ด", value: "โฮโต + เทมปุระยักษ์", icon: "🍜" },
+                ].map((card) => (
+                  <div key={card.label} className="rounded-[14px] border border-[#64D2FF]/25 bg-[#64D2FF]/8 p-4">
+                    <span className="text-[20px]">{card.icon}</span>
+                    <p className="text-[12px] text-[var(--c-text-2)] mt-2">{card.label}</p>
+                    <p className="text-[14px] font-semibold text-[var(--c-text)] mt-0.5">{card.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Timeline */}
+            <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-5">ไทม์ไลน์ Day 6</p>
+              <div className="relative space-y-0">
+                {[
+                  { time: "07:30", icon: "🏨", title: "ออกจากโรงแรม", note: "นั่ง JR ไป Akihabara → เดินไปทางออก East Exit (Central Gate)", phase: "travel" as const },
+                  { time: "07:45", icon: "🚏", title: "ถึงจุดขึ้นรถบัส Traffic Plaza", note: "มองหาป้ายรถบัส \"Kawaguchiko\" ที่ East Exit / ซื้อข้าวปั้นตุนไว้ทานบนรถ", phase: "travel" as const, mapQuery: "Akihabara+Station+East+Exit" },
+                  { time: "08:00", icon: "🚌", title: "ขึ้น Highway Bus มุ่งหน้า Kawaguchiko", note: "จองฝั่งซ้าย (หลังคนขับ) จะเห็นวิวฟูจิระหว่างทาง! ให้เด็กๆ นอนเก็บแรง 2 ชม.", phase: "travel" as const },
+                  { time: "10:20", icon: "🗻", title: "ถึงสถานี Kawaguchiko", note: "เข้าห้องน้ำที่สถานีให้เรียบร้อย (สะอาด แต่คนเยอะหน่อย)", phase: "fuji" as const },
+                  { time: "10:40", icon: "🚌", title: "ขึ้นรถเมล์ Red Line ไปกระเช้า", note: "ใช้ IC Card แตะจ่ายตอนลง → ลงป้ายหมายเลข 9 (Ropeway Ent.)", phase: "fuji" as const },
+                  { time: "11:00", icon: "🚠", title: "Kachi Kachi Ropeway — กระเช้าชมวิว", note: "กระเช้าลอยฟ้า วิวพาโนรามา! ด้านบน: ไหว้ศาลเจ้ากระต่าย + สั่นระฆังแห่งความรัก", phase: "fuji" as const, mapQuery: "Kachi+Kachi+Ropeway+Kawaguchiko" },
+                  { time: "12:30", icon: "🍜", title: "มื้อเที่ยง (ดูตัวเลือกด้านล่าง)", note: "ลงจากกระเช้า แวะซื้อ Fujiyama Cookie เป็นของฝาก แล้วทานมื้อเที่ยง", phase: "food" as const },
+                  { time: "13:30", icon: "🌷", title: "Oishi Park — จุดไฮไลท์!", note: "นั่ง Red Line ไปป้าย 20 เห็นฟูจิสวยที่สุด ไม่มีสายไฟบัง + ไอติม Blueberry + ปล่อยลูกวิ่งเล่นริมทะเลสาบ", phase: "fuji" as const, mapQuery: "Oishi+Park+Kawaguchiko" },
+                  { time: "15:00", icon: "🚌", title: "รถ Red Line กลับสถานี", note: "ต้องมารอรถกลับแล้ว! เผื่อเวลารถมาช้าและรถติด", phase: "travel" as const },
+                  { time: "15:45", icon: "🍝", title: "มื้อเย็นหน้าสถานี Kawaguchiko", note: "ข้ามถนนไปฝั่งตรงข้ามสถานี ดูร้านอร่อยด้านล่าง", phase: "food" as const },
+                  { time: "17:00", icon: "🚌", title: "รถบัสกลับ Tokyo", note: "จากสถานี Kawaguchiko กลับ Akihabara (~2 ชม.)", phase: "travel" as const },
+                  { time: "19:00", icon: "🏨", title: "ถึง Akihabara → กลับโรงแรม", note: "พักผ่อนทันที เตรียมตัวลุยวันสุดท้ายพรุ่งนี้!", phase: "travel" as const },
+                ].map((row, i, arr) => (
+                  <div key={`${row.time}-${row.title}`} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0 ${
+                        row.phase === "fuji" ? "bg-[#64D2FF]/10 ring-2 ring-[#64D2FF]/30" :
+                        row.phase === "food" ? "bg-[#FF9F0A]/10 ring-2 ring-[#FF9F0A]/30" :
+                        "bg-[var(--c-accent)]/10 ring-2 ring-[var(--c-accent)]/30"
+                      }`}>
+                        {row.icon}
+                      </div>
+                      {i < arr.length - 1 && (
+                        <div className={`w-[2px] flex-1 min-h-[20px] ${
+                          row.phase === "fuji" ? "bg-[#64D2FF]/20" :
+                          row.phase === "food" ? "bg-[#FF9F0A]/20" :
+                          "bg-[var(--c-sep)]"
+                        }`} />
+                      )}
+                    </div>
+                    <div className="pb-5 min-w-0 flex-1">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <span className={`text-[15px] font-bold ${
+                          row.phase === "fuji" ? "text-[#64D2FF]" :
+                          row.phase === "food" ? "text-[#FF9F0A]" :
+                          "text-[var(--c-accent)]"
+                        }`}>{row.time}</span>
+                        {row.phase === "food" && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">อาหาร</span>
+                        )}
+                      </div>
+                      <p className="text-[16px] font-semibold text-[var(--c-text)] mt-1 leading-tight">{row.title}</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] mt-1 leading-relaxed">{row.note}</p>
+                      {"mapQuery" in row && row.mapQuery && (
+                        <a href={`https://www.google.com/maps/search/?api=1&query=${row.mapQuery}`} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-full text-[12px] font-medium bg-[var(--c-accent)]/10 text-[var(--c-accent)] hover:bg-[var(--c-accent)]/20 transition-colors">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                          เปิดแผนที่
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Ropeway Details */}
+            <div className="rounded-[16px] border border-[#64D2FF]/30 bg-[#64D2FF]/5 p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">Kachi Kachi Ropeway — กระเช้าชมวิว</p>
+              <p className="text-[13px] text-[var(--c-text-2)] mb-4">ขึ้นกระเช้าดูวิวพาโนรามาฟูจิ + ของกิน</p>
+              <div className="space-y-2.5">
+                {[
+                  { icon: "🚠", title: "กระเช้าลอยฟ้า", desc: "วิวพาโนรามาทะเลสาบ + ภูเขาไฟฟูจิ เด็กๆ ชอบมาก" },
+                  { icon: "🐰", title: "ศาลเจ้ากระต่าย", desc: "ด้านบนกระเช้า ไหว้ขอพร + ถ่ายรูป" },
+                  { icon: "🔔", title: "ระฆังแห่งความรัก (Tenjo Bell)", desc: "สั่นระฆังคู่ ถ่ายรูปวิวหลังสวย" },
+                  { icon: "🍡", title: "ดังโงะย่าง", desc: "ไม้ละ 400 เยน หรือ Tanuki Dango รูปการ์ตูน กินไปดูวิวไป" },
+                ].map((item) => (
+                  <div key={item.title} className="flex items-start gap-3 rounded-[12px] border border-[#64D2FF]/20 bg-[#64D2FF]/5 p-4">
+                    <span className="text-[20px]">{item.icon}</span>
+                    <div>
+                      <p className="text-[14px] font-semibold text-[var(--c-text)]">{item.title}</p>
+                      <p className="text-[13px] text-[var(--c-text-2)]">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-[10px] bg-[#FF453A]/10 border border-[#FF453A]/25 px-3.5 py-2.5 mt-3">
+                <p className="text-[13px] text-[#FF453A] font-medium">แผนสำรอง: ถ้าคิวรอกระเช้ายาวเกิน 40 นาที &rarr; ตัดออก! ข้ามไป Oishi Park เลย</p>
+              </div>
+            </div>
+
+            {/* Lunch Options */}
+            <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">มื้อเที่ยง — ร้านจัดอันดับ</p>
+              <p className="text-[13px] text-[var(--c-text-2)] mb-4">เรียงตามความสะดวกเส้นทาง</p>
+              <div className="space-y-2.5">
+                {[
+                  { rank: "1", name: "Koubaiya (สาขา Oishi Park)", desc: "ตั้งอยู่ที่ Oishi Park ป้ายรถเมล์ No.20 จุดหมายต่อไปของเราพอดี! นั่ง Red Line จากกระเช้า (ป้าย 9) ยิงยาวมาลงทีเดียว", icon: "🥇", mapQuery: "Koubaiya+Oishi+Park+Kawaguchiko", color: "border-[#FF9F0A]/30 bg-[#FF9F0A]/5" },
+                  { rank: "2", name: "Momijitei (โมมิจิเท)", desc: "อยู่ป้าย No.19 ก่อนถึง Oishi Park แค่ป้ายเดียว ทานเสร็จเดินไป Oishi Park ได้ (500-600 ม.)", icon: "🥈", mapQuery: "Momijitei+Kawaguchiko", color: "border-[var(--c-sep)] bg-[var(--c-subtle-card)]" },
+                  { rank: "3", name: "Houtou Fudou (โดมขาว)", desc: "ดังโฮโตหม้อร้อน อยู่ป้าย No.17 ใกล้กระเช้าสุด แต่ทานเสร็จต้องรอรถบัสอีกรอบไป Oishi Park", icon: "🥉", mapQuery: "Houtou+Fudou+Kawaguchiko", color: "border-[var(--c-sep)] bg-[var(--c-subtle-card)]" },
+                ].map((r) => (
+                  <div key={r.name} className={`rounded-[12px] border p-4 ${r.color}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[18px]">{r.icon}</span>
+                      <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
+                    </div>
+                    <p className="text-[13px] text-[var(--c-text-2)]">{r.desc}</p>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${r.mapQuery}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-full text-[12px] font-medium bg-[var(--c-accent)]/10 text-[var(--c-accent)] hover:bg-[var(--c-accent)]/20 transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                      เปิดแผนที่
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Dinner Options */}
+            <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">มื้อเย็น — ร้านหน้าสถานี Kawaguchiko</p>
+              <p className="text-[13px] text-[var(--c-text-2)] mb-4">ข้ามถนนฝั่งตรงข้ามสถานี ทานก่อนขึ้นรถกลับ</p>
+              <div className="space-y-2.5">
+                {[
+                  { name: "Entaku", desc: "บ้านไม้ญี่ปุ่นโบราณ เทมปุระ & โซบะ บรรยากาศดี", icon: "🏡", tag: "แนะนำ", mapQuery: "Entaku+Kawaguchiko" },
+                  { name: "Houtou Fudou (สาขาหน้าสถานี)", desc: "ร้านสีขาว ดังโฮโตหม้อร้อน (ถ้ายังไม่ได้ทานตอนเที่ยง)", icon: "🍲", tag: "", mapQuery: "Houtou+Fudou+Kawaguchiko+Station" },
+                  { name: "Hirai", desc: "ร้านที่มีกุ้งเทมปุระยักษ์!", icon: "🦐", tag: "", mapQuery: "Hirai+Kawaguchiko" },
+                ].map((r) => (
+                  <div key={r.name} className={`rounded-[12px] border p-4 ${r.tag ? "border-[#FF9F0A]/30 bg-[#FF9F0A]/5" : "border-[var(--c-sep)] bg-[var(--c-subtle-card)]"}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[16px]">{r.icon}</span>
+                      <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
+                      {r.tag && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">{r.tag}</span>}
+                    </div>
+                    <p className="text-[13px] text-[var(--c-text-2)]">{r.desc}</p>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${r.mapQuery}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-full text-[12px] font-medium bg-[var(--c-accent)]/10 text-[var(--c-accent)] hover:bg-[var(--c-accent)]/20 transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                      เปิดแผนที่
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Transport */}
+            <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-4">การเดินทางวันนี้</p>
+              <div className="space-y-2.5">
+                {[
+                  { from: "โรงแรม", to: "Akihabara", method: "JR Chuo-Sobu (1 สถานี)", cost: "~150 เยน/คน" },
+                  { from: "Akihabara", to: "Kawaguchiko", method: "Highway Bus (~2 ชม.)", cost: "~2,200 เยน/คน" },
+                  { from: "สถานี Kawaguchiko", to: "รอบทะเลสาบ", method: "Red Line Bus (IC Card)", cost: "~600 เยน/คน" },
+                  { from: "กระเช้า Ropeway", to: "ไป-กลับ", method: "Kachi Kachi Ropeway", cost: "~900 เยน/คน" },
+                  { from: "Kawaguchiko", to: "Akihabara", method: "Highway Bus (~2 ชม.)", cost: "~2,200 เยน/คน" },
+                ].map((t, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-[10px] bg-[var(--c-subtle-card)] border border-[var(--c-sep)] px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-medium text-[var(--c-text)]">{t.from} &rarr; {t.to}</p>
+                      <p className="text-[12px] text-[var(--c-text-2)]">{t.method}</p>
+                    </div>
+                    <span className="text-[12px] font-semibold text-[var(--c-accent)] whitespace-nowrap text-right">{t.cost}</span>
+                  </div>
+                ))}
+                <div className="rounded-[10px] bg-[var(--c-accent)]/8 border border-[var(--c-accent)]/20 px-4 py-3">
+                  <p className="text-[14px] font-semibold text-[var(--c-text)]">รวมค่าใช้จ่ายทั้งวัน</p>
+                  <p className="text-[13px] text-[var(--c-accent)] font-bold">~6,720 เยน (ประมาณ 1,600 บาท)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Checklist */}
+            <div className="rounded-[16px] border border-[#FF453A]/30 bg-[#FF453A]/5 p-4 md:p-6">
+              <p className="text-[16px] font-semibold text-[#FF453A] mb-3">Checklist วันนี้</p>
+              <div className="space-y-2.5">
+                {[
+                  { icon: "🧥", text: "เสื้อกันหนาว: ลมที่ทะเลสาบและบนยอดเขากระเช้าแรงมาก อย่าลืมรูดซิปให้ลูกให้มิดชิด" },
+                  { icon: "👶", text: "พับรถเข็น: ตอนขึ้นรถบัส Red Line คนอาจจะแน่น เตรียมพับรถเข็นให้คล่อง" },
+                  { icon: "🎫", text: "ตั๋วขากลับ: เก็บตั๋วรถบัสขากลับไว้ให้ดี อย่าทำหาย!" },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <span className="text-[16px]">{item.icon}</span>
+                    <p className="text-[14px] text-[var(--c-text)] leading-relaxed">{item.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="rounded-[16px] border border-[#30D158]/30 bg-[#30D158]/5 p-5">
+              <p className="text-[16px] font-semibold text-[#30D158] mb-3">ทริค Day 6</p>
+              <div className="space-y-2.5">
+                {[
+                  { icon: "🚌", text: "จองรถบัสรอบเช้าล่วงหน้า! นั่งฝั่งซ้ายจะเห็นวิวฟูจิระหว่างทาง" },
+                  { icon: "⏱️", text: "กระเช้า: ถ้าคิวเกิน 40 นาที ข้ามไป Oishi Park เลย ไม่ต้องเสียเวลารอ" },
+                  { icon: "🍦", text: "Oishi Park: ต้องกิน Soft Cream รส Blueberry ของดีประจำสวน!" },
+                  { icon: "🍪", text: "Fujiyama Cookie: ซื้อคุกกี้รูปภูเขาฟูจิเป็นของฝาก อยู่ตีนเขากระเช้า" },
+                  { icon: "🕐", text: "15:00 ต้องเริ่มกลับ! เผื่อเวลารถบัสกลับ อย่าดื่มด่ำจนลืมเวลา" },
+                ].map((tip, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <span className="text-[16px]">{tip.icon}</span>
+                    <p className="text-[14px] text-[var(--c-text)] leading-relaxed">{tip.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : dayNumber === 7 ? (
+          <div className="space-y-5">
+            {/* Header */}
+            <div className="rounded-[18px] border border-[#FF9F0A]/40 bg-[#FF9F0A]/5 p-5 md:p-7">
+              <p className="text-[24px] md:text-[34px] font-bold text-[var(--c-text)] leading-tight">Day 7: Kawagoe &amp; Ginza</p>
+              <p className="text-[14px] mt-2 text-[var(--c-text-2)]">วันเสาร์ 7 มีนาคม 2026 — เมืองเก่า Little Edo &middot; Ginza ถนนปิด &middot; Tokyo Station ส่งท้าย</p>
+              <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { label: "ช่วงเช้า", value: "Kawagoe เมืองเก่า", icon: "🏯" },
+                  { label: "ช่วงบ่าย", value: "Ginza ถนนปิด!", icon: "🛍️" },
+                  { label: "ช่วงเย็น", value: "Tokyo Station", icon: "🚄" },
+                  { label: "มื้อเด็ด", value: "Ramen Street", icon: "🍜" },
+                ].map((card) => (
+                  <div key={card.label} className="rounded-[14px] border border-[#FF9F0A]/25 bg-[#FF9F0A]/8 p-4">
+                    <span className="text-[20px]">{card.icon}</span>
+                    <p className="text-[12px] text-[var(--c-text-2)] mt-2">{card.label}</p>
+                    <p className="text-[14px] font-semibold text-[var(--c-text)] mt-0.5">{card.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Timeline */}
+            <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-5">ไทม์ไลน์ Day 7</p>
+              <div className="relative space-y-0">
+                {[
+                  { time: "09:00", icon: "🚃", title: "มุ่งหน้า Kawagoe", note: "JR ไป Ikebukuro → ต่อ Tobu Tojo Line ไป Kawagoe", phase: "travel" as const },
+                  { time: "10:00", icon: "🚌", title: "ถึง Kawagoe นั่งรถเมล์เข้าเมืองเก่า", note: "ลงป้าย \"Ichibangai\" หรือ \"Kura no machi\"", phase: "kawagoe" as const },
+                  { time: "10:30", icon: "🏯", title: "เดินเล่นเมืองเก่า Little Edo", note: "ถ่ายรูปกับหอระฆัง Toki no Kane + เดินชมตึกโกดังเก่า", phase: "kawagoe" as const, mapQuery: "Toki+no+Kane+Kawagoe" },
+                  { time: "11:00", icon: "🍠", title: "ตามล่าของกิน Kawagoe", note: "Koedo Osatsuan มันหวานทอดแผ่นยาว + Candy Alley ขนมแท่งยาว + Kawagoe Pudding", phase: "food" as const },
+                  { time: "13:00", icon: "🚃", title: "นั่งรถไฟกลับเข้าโตเกียว", note: "มุ่งหน้า Ginza (เปลี่ยนที่ Ikebukuro → Marunouchi Line)", phase: "travel" as const },
+                  { time: "14:30", icon: "🛣️", title: "Ginza Pedestrian Paradise!", note: "ถนนปิดทุกเสาร์! เดินถ่ายรูปกลางถนนกับลูกๆ สนุกมาก", phase: "ginza" as const, mapQuery: "Ginza+Pedestrian+Paradise+Chuo+Dori" },
+                  { time: "15:00", icon: "🍵", title: "Senchado Tokyo — ซื้อชาเขียว", note: "ตาม List แม่ แวะซื้อชาเขียวคุณภาพดี", phase: "ginza" as const, mapQuery: "Senchado+Tokyo+Ginza" },
+                  { time: "15:30", icon: "✏️", title: "Itoya — ร้านเครื่องเขียนตึกแดง", note: "เดินดูปากกา/กระดาษ ร้านเครื่องเขียนตำนานของ Ginza", phase: "ginza" as const, mapQuery: "Itoya+Ginza" },
+                  { time: "16:15", icon: "🚶", title: "เดินไป Tokyo Station", note: "เดิน หรือนั่งรถไฟ 1 สถานี ไปฝั่ง Yaesu", phase: "travel" as const },
+                  { time: "16:30", icon: "🚂", title: "Tomica Shop & Plarail Shop", note: "Tokyo Station First Avenue ชั้น B1 ฝั่ง Yaesu — ให้ลูกชายเลือกซื้อรถไฟ/ต่อรางเล่น", phase: "tokyo" as const, mapQuery: "Tokyo+Character+Street+First+Avenue" },
+                  { time: "18:00", icon: "🍜", title: "มื้อเย็นส่งท้ายทริป!", note: "Tokyo Ramen Street (B1) หรือขึ้นชั้น 12-13 ห้าง Daimaru", phase: "food" as const, mapQuery: "Tokyo+Ramen+Street+Tokyo+Station" },
+                  { time: "19:30", icon: "🏨", title: "กลับโรงแรม — คืนสุดท้าย", note: "เก็บของ แพ็คกระเป๋า เตรียมตัว Check-out พรุ่งนี้เช้า!", phase: "travel" as const },
+                ].map((row, i, arr) => (
+                  <div key={`${row.time}-${row.title}`} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0 ${
+                        row.phase === "kawagoe" ? "bg-[#FF9F0A]/10 ring-2 ring-[#FF9F0A]/30" :
+                        row.phase === "ginza" ? "bg-[#BF5AF2]/10 ring-2 ring-[#BF5AF2]/30" :
+                        row.phase === "tokyo" ? "bg-[#FF453A]/10 ring-2 ring-[#FF453A]/30" :
+                        row.phase === "food" ? "bg-[#FF6482]/10 ring-2 ring-[#FF6482]/30" :
+                        "bg-[var(--c-accent)]/10 ring-2 ring-[var(--c-accent)]/30"
+                      }`}>
+                        {row.icon}
+                      </div>
+                      {i < arr.length - 1 && (
+                        <div className={`w-[2px] flex-1 min-h-[20px] ${
+                          row.phase === "kawagoe" ? "bg-[#FF9F0A]/20" :
+                          row.phase === "ginza" ? "bg-[#BF5AF2]/20" :
+                          row.phase === "tokyo" ? "bg-[#FF453A]/20" :
+                          row.phase === "food" ? "bg-[#FF6482]/20" :
+                          "bg-[var(--c-sep)]"
+                        }`} />
+                      )}
+                    </div>
+                    <div className="pb-5 min-w-0 flex-1">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <span className={`text-[15px] font-bold ${
+                          row.phase === "kawagoe" ? "text-[#FF9F0A]" :
+                          row.phase === "ginza" ? "text-[#BF5AF2]" :
+                          row.phase === "tokyo" ? "text-[#FF453A]" :
+                          row.phase === "food" ? "text-[#FF6482]" :
+                          "text-[var(--c-accent)]"
+                        }`}>{row.time}</span>
+                        {row.phase === "kawagoe" && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">Kawagoe</span>
+                        )}
+                        {row.phase === "ginza" && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#BF5AF2]/15 text-[#BF5AF2]">Ginza</span>
+                        )}
+                        {row.phase === "tokyo" && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF453A]/15 text-[#FF453A]">Tokyo Sta.</span>
+                        )}
+                        {row.phase === "food" && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF6482]/15 text-[#FF6482]">อาหาร</span>
+                        )}
+                      </div>
+                      <p className="text-[16px] font-semibold text-[var(--c-text)] mt-1 leading-tight">{row.title}</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] mt-1 leading-relaxed">{row.note}</p>
+                      {"mapQuery" in row && row.mapQuery && (
+                        <a href={`https://www.google.com/maps/search/?api=1&query=${row.mapQuery}`} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-full text-[12px] font-medium bg-[var(--c-accent)]/10 text-[var(--c-accent)] hover:bg-[var(--c-accent)]/20 transition-colors">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                          เปิดแผนที่
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Kawagoe Snacks */}
+            <div className="rounded-[16px] border border-[#FF9F0A]/30 bg-[#FF9F0A]/5 p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">ของกิน Kawagoe — ตามล่ามันหวาน!</p>
+              <p className="text-[13px] text-[var(--c-text-2)] mb-4">Kawagoe ขึ้นชื่อเรื่องมันหวาน (Sweet Potato) ทุกร้านมีเมนูมันหวาน!</p>
+              <div className="space-y-2.5">
+                {[
+                  { name: "Koedo Osatsuan", desc: "มันหวานทอดแผ่นยาว (Osatsu Chips) กรอบๆ หวานๆ!", icon: "🍠", tag: "ต้องลอง!", mapQuery: "Koedo+Osatsuan+Kawagoe" },
+                  { name: "Candy Alley (Kashiya Yokocho)", desc: "ซอยขนมโบราณ! ซื้อขนมแท่งยาว Fugashi ที่ร้าน Matsuriku", icon: "🍭", tag: "", mapQuery: "Kashiya+Yokocho+Candy+Alley+Kawagoe" },
+                  { name: "Kawagoe Pudding", desc: "พุดดิ้งมันหวาน ซื้อกลับบ้านเป็นของฝากได้!", icon: "🍮", tag: "", mapQuery: "Kawagoe+Pudding" },
+                ].map((r) => (
+                  <div key={r.name} className={`rounded-[12px] border p-4 ${r.tag ? "border-[#FF9F0A]/30 bg-[#FF9F0A]/5" : "border-[var(--c-sep)] bg-[var(--c-subtle-card)]"}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[16px]">{r.icon}</span>
+                      <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
+                      {r.tag && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">{r.tag}</span>}
+                    </div>
+                    <p className="text-[13px] text-[var(--c-text-2)]">{r.desc}</p>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${r.mapQuery}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-full text-[12px] font-medium bg-[var(--c-accent)]/10 text-[var(--c-accent)] hover:bg-[var(--c-accent)]/20 transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                      เปิดแผนที่
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Ginza Spots */}
+            <div className="rounded-[16px] border border-[#BF5AF2]/30 bg-[#BF5AF2]/5 p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">Ginza Pedestrian Paradise (14:30-16:15)</p>
+              <p className="text-[13px] text-[var(--c-text-2)] mb-4">ทุกวันเสาร์ถนน Chuo-dori ปิด! เดินถ่ายรูปกลางถนนได้</p>
+              <div className="space-y-2.5">
+                {[
+                  { name: "ถนนปิด Chuo-dori", desc: "เดินกลางถนนกับลูกๆ ถ่ายรูปสนุก! ไม่มีรถเลย", icon: "📸", mapQuery: "Ginza+Chuo+Dori" },
+                  { name: "Senchado Tokyo", desc: "ร้านชาเขียวคุณภาพดี ตาม List แม่", icon: "🍵", mapQuery: "Senchado+Tokyo+Ginza" },
+                  { name: "Itoya (ตึกแดง)", desc: "ร้านเครื่องเขียนตำนานของ Ginza! ปากกา กระดาษ เครื่องเขียนสวยๆ ครบทุกชั้น", icon: "✏️", mapQuery: "Itoya+Ginza" },
+                ].map((r) => (
+                  <div key={r.name} className="rounded-[12px] border border-[#BF5AF2]/25 bg-[#BF5AF2]/5 p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[16px]">{r.icon}</span>
+                      <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
+                    </div>
+                    <p className="text-[13px] text-[var(--c-text-2)]">{r.desc}</p>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${r.mapQuery}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-full text-[12px] font-medium bg-[var(--c-accent)]/10 text-[var(--c-accent)] hover:bg-[var(--c-accent)]/20 transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                      เปิดแผนที่
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Tokyo Station */}
+            <div className="rounded-[16px] border border-[#FF453A]/30 bg-[#FF453A]/5 p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">Tokyo Station — ส่งท้ายทริป (16:30-19:30)</p>
+              <p className="text-[13px] text-[var(--c-text-2)] mb-4">First Avenue ชั้น B1 ฝั่ง Yaesu — สวรรค์ของเล่น + ราเมน</p>
+              <div className="space-y-2.5">
+                {[
+                  { name: "Tomica Shop", desc: "ให้ลูกชายเลือกซื้อรถไฟ/ต่อรางเล่น ของที่นี่มี Limited Edition!", icon: "🚂", tag: "ลูกชาย", mapQuery: "Tomica+Shop+Tokyo+Station+First+Avenue" },
+                  { name: "Plarail Shop", desc: "ร้านรางรถไฟ Plarail ใหญ่ที่สุด ลองเล่นได้!", icon: "🛤️", tag: "ลูกชาย", mapQuery: "Plarail+Shop+Tokyo+Station" },
+                  { name: "Tokyo Ramen Street", desc: "รวมร้านราเมนดังจากทั่วญี่ปุ่น 8 ร้าน เลือกสายที่ชอบได้เลย", icon: "🍜", tag: "มื้อเย็น", mapQuery: "Tokyo+Ramen+Street" },
+                  { name: "Daimaru ชั้น 12-13", desc: "ทางเลือกมื้อเย็น ร้านอาหารหลากสไตล์ในห้างติดสถานี", icon: "🏬", tag: "มื้อเย็น", mapQuery: "Daimaru+Tokyo+Station" },
+                ].map((r) => (
+                  <div key={r.name} className="rounded-[12px] border border-[#FF453A]/20 bg-[#FF453A]/5 p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[16px]">{r.icon}</span>
+                      <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        r.tag === "มื้อเย็น" ? "bg-[#FF9F0A]/15 text-[#FF9F0A]" : "bg-[#FF453A]/15 text-[#FF453A]"
+                      }`}>{r.tag}</span>
+                    </div>
+                    <p className="text-[13px] text-[var(--c-text-2)]">{r.desc}</p>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${r.mapQuery}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-full text-[12px] font-medium bg-[var(--c-accent)]/10 text-[var(--c-accent)] hover:bg-[var(--c-accent)]/20 transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>
+                      เปิดแผนที่
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Transport */}
+            <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-4">การเดินทางวันนี้</p>
+              <div className="space-y-2.5">
+                {[
+                  { from: "Asakusabashi", to: "Ikebukuro", method: "JR Chuo-Sobu → Yamanote", cost: "~210 เยน/คน" },
+                  { from: "Ikebukuro", to: "Kawagoe", method: "Tobu Tojo Line (~30 นาที)", cost: "~480 เยน/คน" },
+                  { from: "Kawagoe", to: "Ginza", method: "Tobu → Ikebukuro → Marunouchi Line", cost: "~650 เยน/คน" },
+                  { from: "Ginza", to: "Tokyo Station", method: "เดิน หรือ Marunouchi Line 1 สถานี", cost: "ฟรี (เดิน)" },
+                  { from: "Tokyo Station", to: "Asakusabashi", method: "JR Chuo-Sobu (เปลี่ยนที่ Akihabara)", cost: "~170 เยน/คน" },
+                ].map((t, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-[10px] bg-[var(--c-subtle-card)] border border-[var(--c-sep)] px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-medium text-[var(--c-text)]">{t.from} &rarr; {t.to}</p>
+                      <p className="text-[12px] text-[var(--c-text-2)]">{t.method}</p>
+                    </div>
+                    <span className="text-[12px] font-semibold text-[var(--c-accent)] whitespace-nowrap text-right">{t.cost}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="rounded-[16px] border border-[#30D158]/30 bg-[#30D158]/5 p-5">
+              <p className="text-[16px] font-semibold text-[#30D158] mb-3">ทริค Day 7</p>
+              <div className="space-y-2.5">
+                {[
+                  { icon: "🍠", text: "Kawagoe = เมืองมันหวาน! ทุกร้านมีเมนูมันหวาน ลองให้ครบ" },
+                  { icon: "📸", text: "หอระฆัง Toki no Kane: จุดถ่ายรูปสัญลักษณ์ Kawagoe ต้องไม่พลาด" },
+                  { icon: "🛣️", text: "Ginza ถนนปิดเฉพาะวันเสาร์-อาทิตย์! เราไปพอดีวันเสาร์" },
+                  { icon: "🧳", text: "คืนสุดท้าย! กลับถึง รร. ต้องแพ็คกระเป๋าให้เรียบร้อย Check-out พรุ่งนี้เช้า" },
+                  { icon: "🍜", text: "Tokyo Ramen Street: เลือกสายราเมนที่ชอบ — ทงคตสึ/โชยุ/มิโซะ มีครบ!" },
+                ].map((tip, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <span className="text-[16px]">{tip.icon}</span>
+                    <p className="text-[14px] text-[var(--c-text)] leading-relaxed">{tip.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-6">
             <p className="text-[16px] font-semibold text-[var(--c-text)]">Day {dayNumber}</p>
-            <p className="text-[13px] text-[var(--c-text-2)] mt-1">เตรียมเทมเพลตไทม์ไลน์ไว้แล้ว สามารถเติมกิจกรรมของวันนี้ได้ต่อทันที</p>
+            <p className="text-[13px] text-[var(--c-text-2)] mt-1">เตรียมเทมเพลตไทม์ไลน์ไว้แล้ว</p>
           </div>
         )}
         </div>
