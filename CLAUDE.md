@@ -3,7 +3,7 @@
 ## Project Overview
 Family assistant web app. Started as a weekly child pickup/drop-off schedule ("ตารางรับส่งลูก"), expanding into a multi-tool family helper platform.
 
-**Live URL:** https://cake-jh.vercel.app
+**Live URL:** https://cake-family.vercel.app
 **Passphrase:** CakeFamily1988+ (SHA-256 hashed on client, cookie-based auth with "Remember Forever")
 
 ## Tech Stack
@@ -12,7 +12,7 @@ Family assistant web app. Started as a weekly child pickup/drop-off schedule ("�
 - **Font:** Noto Sans Thai (Google Fonts)
 - **Database:** Upstash Redis (free tier, `@upstash/redis`, env vars on Vercel)
 - **Email:** Resend API (for forgot passphrase, `onboarding@resend.dev` sender)
-- **Hosting:** Vercel (project name: `driver-schedule`, alias: `cake-jh.vercel.app`)
+- **Hosting:** Vercel (project name: `cake-family`, alias: `cake-family.vercel.app`)
 - **Language:** Thai UI, Thai comments OK
 
 ## Architecture
@@ -69,7 +69,7 @@ Stored as single JSON blob in Redis under key `cake-schedule`.
 cd driver-schedule
 npm run build
 vercel --prod
-# Alias is automatic: cake-jh.vercel.app
+# Alias is automatic: cake-family.vercel.app
 ```
 
 ## Future Vision

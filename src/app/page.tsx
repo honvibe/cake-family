@@ -65,6 +65,13 @@ const THAI_MONTHS = [
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
 
+/** Preset: เสาร์+อาทิตย์ = JH ทั้งวัน, ศุกร์เย็น = JH */
+function getPresetDriver(dayOfWeek: number, slot: TimeSlot): Driver | null {
+  if (dayOfWeek === 0 || dayOfWeek === 6) return "JH"; // เสาร์+อาทิตย์ เช้า+เย็น
+  if (dayOfWeek === 5 && slot === "evening") return "JH"; // ศุกร์เย็น
+  return null;
+}
+
 function getMonday(date: Date): Date {
   const d = new Date(date);
   const day = d.getDay();
@@ -220,7 +227,15 @@ export default function Home() {
       if (editingDay === dateKey && dayDraft) {
         return dayDraft;
       }
-      const base = schedule[dateKey] || { morning: "", evening: "", fuel: "", mileage: "", remarks: {} };
+      const raw = schedule[dateKey] || { morning: "", evening: "", fuel: "", mileage: "", remarks: {} };
+      // Pre-fill empty slots with presets (ไม่ override ข้อมูลที่มีอยู่แล้ว)
+      const d = new Date(dateKey + "T00:00:00");
+      const dow = d.getDay();
+      const base = {
+        ...raw,
+        morning: raw.morning || getPresetDriver(dow, "morning") || "",
+        evening: raw.evening || getPresetDriver(dow, "evening") || "",
+      } as ScheduleEntry;
       // Merge pulled calendar events that aren't already in local events
       // Merge pulled calendar events
       const pulled = pulledEvents[dateKey];
@@ -546,13 +561,13 @@ export default function Home() {
 
       {/* Sidebar Overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-30 md:hidden" onClick={() => setSidebarOpen(false)}>
+        <div className="fixed inset-0 z-30" onClick={() => setSidebarOpen(false)}>
           <div className="absolute inset-0 bg-[var(--c-overlay)] backdrop-blur-sm" />
         </div>
       )}
 
       {/* Sidebar — Apple style */}
-      <aside className={`fixed top-11 md:top-12 left-0 z-30 h-[calc(100vh-44px)] md:h-[calc(100vh-48px)] w-[270px] bg-[var(--c-glass)] backdrop-blur-xl border-r border-[var(--c-sep)] transition-transform duration-300 ease-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
+      <aside className={`fixed top-11 md:top-12 left-0 z-30 h-[calc(100vh-44px)] md:h-[calc(100vh-48px)] w-[270px] bg-[var(--c-glass)] backdrop-blur-xl border-r border-[var(--c-sep)] transition-transform duration-300 ease-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="h-full flex flex-col">
           <nav className="p-2.5 pt-3 space-y-0.5">
             {NAV_ITEMS.map((item) => (
@@ -585,7 +600,7 @@ export default function Home() {
       </aside>
 
       {/* Main Content — Apple HIG spacing */}
-      <main className="px-4 py-5 md:px-8 md:py-6 md:pl-[302px]">
+      <main className="px-4 py-5 md:px-8 md:py-6">
         <div className="max-w-7xl mx-auto">
 
         {/* Tab: Schedule */}

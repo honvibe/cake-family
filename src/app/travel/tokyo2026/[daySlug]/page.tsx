@@ -2,6 +2,10 @@ import MainNavigationShell from "@/components/main-navigation-shell";
 import HotelCard from "@/components/hotel-card";
 import NaritaToHotelGuide from "@/components/narita-to-hotel-guide";
 import { TokyoBackLink, TokyoDaySelector } from "@/components/tokyo-nav";
+import { TokyoFontButtons, TokyoZoomWrap } from "@/components/tokyo-font-scale";
+import { TokyoLangButton, TokyoLangWrap } from "@/components/tokyo-lang";
+import TokyoDayJP from "@/components/tokyo-day-jp";
+import PrepChecklist from "@/components/prep-checklist";
 import { notFound } from "next/navigation";
 
 export function generateStaticParams() {
@@ -18,14 +22,14 @@ export default async function TokyoDayPage({
   const dayNumber = match ? Number(match[1]) : NaN;
   if (!Number.isInteger(dayNumber) || dayNumber < 1 || dayNumber > 8) notFound();
   const dayLabels = [
-    "Sun. 1 Mar",
-    "Mon. 2 Mar",
-    "Tue. 3 Mar",
-    "Wed. 4 Mar",
-    "Thu. 5 Mar",
-    "Fri. 6 Mar",
-    "Sat. 7 Mar",
-    "Sun. 8 Mar",
+    "Sun. 1",
+    "Mon. 2",
+    "Tue. 3",
+    "Wed. 4",
+    "Thu. 5",
+    "Fri. 6",
+    "Sat. 7",
+    "Sun. 8",
   ];
   const HOTEL = {
     name: "MONday Apart Asakusabashi Akihabara",
@@ -44,11 +48,18 @@ export default async function TokyoDayPage({
             <p className="text-[24px] md:text-[34px] font-bold text-[var(--c-text)] tracking-tight">Tokyo 2026</p>
             <p className="text-[15px] text-[var(--c-text-2)]">Day {dayNumber}</p>
           </div>
-          <TokyoBackLink />
+          <div className="flex items-center gap-2">
+            <TokyoLangButton />
+            <TokyoFontButtons />
+            <TokyoBackLink />
+          </div>
         </div>
 
+        <TokyoZoomWrap>
         <TokyoDaySelector dayLabels={dayLabels} dayNumber={dayNumber} />
 
+        <TokyoLangWrap>
+        <div className="lang-th">
         <div className="mt-6 md:mt-7">
         {dayNumber === 1 ? (
           <div className="space-y-5">
@@ -75,14 +86,276 @@ export default async function TokyoDayPage({
               </div>
             </div>
 
+            {/* Checklist กดเช็ค */}
+            <PrepChecklist />
+
+            {/* สิ่งที่ต้องเตรียมก่อนเดินทาง */}
+            <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-4 md:p-6">
+              <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">รายละเอียดแต่ละข้อ</p>
+              <p className="text-[13px] text-[var(--c-text-3)] mb-4">กดแต่ละหัวข้อเพื่อดูรายละเอียด</p>
+              <div className="space-y-2.5">
+                {/* 1. Check-in ล่วงหน้า */}
+                <details className="group rounded-[12px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] overflow-hidden">
+                  <summary className="flex items-center gap-3 p-3.5 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="w-8 h-8 rounded-full bg-[var(--c-accent)]/12 flex items-center justify-center text-[16px] shrink-0">✈️</span>
+                    <span className="flex-1 text-[15px] font-semibold text-[var(--c-text)]">1. Check-in ล่วงหน้า</span>
+                    <span className="text-[12px] text-[var(--c-text-3)] group-open:rotate-90 transition-transform">▶</span>
+                  </summary>
+                  <div className="px-3.5 pb-3.5 space-y-2">
+                    <div className="rounded-lg bg-[var(--c-accent)]/8 p-3">
+                      <p className="text-[13px] font-semibold text-[var(--c-accent)] mb-1">Thai AirAsia X (XJ 606)</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">Web check-in ผ่าน <span className="font-semibold text-[var(--c-text)]">airasia.com</span> หรือแอป AirAsia</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">เปิดให้ check-in: <span className="font-semibold text-[var(--c-text)]">14 วันก่อนเดินทาง</span> ถึง 1 ชม.ก่อนเครื่องออก</p>
+                    </div>
+                    <div className="text-[13px] text-[var(--c-text-2)] leading-relaxed space-y-1">
+                      <p>• เคาน์เตอร์ DMK เปิด 3 ชม.ก่อน, ปิด 45 นาทีก่อนเครื่องออก</p>
+                      <p>• ถึงสนามบินอย่างน้อย 2-3 ชม.ก่อน (เที่ยวบินระหว่างประเทศ)</p>
+                    </div>
+                  </div>
+                </details>
+
+                {/* 2. แลกเงินเยน */}
+                <details className="group rounded-[12px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] overflow-hidden">
+                  <summary className="flex items-center gap-3 p-3.5 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="w-8 h-8 rounded-full bg-[#FF9F0A]/12 flex items-center justify-center text-[16px] shrink-0">💴</span>
+                    <span className="flex-1 text-[15px] font-semibold text-[var(--c-text)]">2. แลกเงินเยน</span>
+                    <span className="text-[12px] text-[var(--c-text-3)] group-open:rotate-90 transition-transform">▶</span>
+                  </summary>
+                  <div className="px-3.5 pb-3.5 space-y-2">
+                    <div className="rounded-lg bg-[#FF9F0A]/8 p-3">
+                      <p className="text-[13px] font-semibold text-[#FF9F0A] mb-1">แลกที่ไหนดี?</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed"><span className="font-semibold text-[var(--c-text)]">Super Rich</span> (สีเขียว/สีส้ม) สาขาราชดำริ เรทดีที่สุด</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">เช็คเรทล่วงหน้าผ่านแอป SuperRichTH หรือเว็บ superrich.co.th</p>
+                    </div>
+                    <div className="text-[13px] text-[var(--c-text-2)] leading-relaxed space-y-1">
+                      <p className="font-semibold text-[var(--c-text)]">ควรแลกเท่าไหร่ (4 คน, 8 วัน)</p>
+                      <p>• แบบประหยัด: 100,000-150,000 เยน (~22,000-33,000 บาท)</p>
+                      <p>• แบบสบาย: 200,000-300,000 เยน (~44,000-66,000 บาท)</p>
+                      <p>• แลก 70-80% ของงบเงินสด ส่วนที่เหลือใช้ YouTrip/SCB Planet</p>
+                      <p>• อย่าแลกที่สนามบิน — เรทแพงกว่าร้านในเมืองมาก</p>
+                    </div>
+                  </div>
+                </details>
+
+                {/* 3. ซื้อซิม / eSIM */}
+                <details className="group rounded-[12px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] overflow-hidden">
+                  <summary className="flex items-center gap-3 p-3.5 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="w-8 h-8 rounded-full bg-[#30D158]/12 flex items-center justify-center text-[16px] shrink-0">📶</span>
+                    <span className="flex-1 text-[15px] font-semibold text-[var(--c-text)]">3. ซื้อซิม / eSIM</span>
+                    <span className="text-[12px] text-[var(--c-text-3)] group-open:rotate-90 transition-transform">▶</span>
+                  </summary>
+                  <div className="px-3.5 pb-3.5 space-y-2">
+                    <div className="rounded-lg bg-[#30D158]/8 p-3">
+                      <p className="text-[13px] font-semibold text-[#30D158] mb-1">แนะนำ eSIM (ไม่ต้องเปลี่ยนซิม)</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">ใช้ได้กับ iPhone XS ขึ้นไป — ซิมไทยเดิมยังรับ SMS/โทรได้ (Dual SIM)</p>
+                    </div>
+                    <div className="text-[13px] text-[var(--c-text-2)] leading-relaxed space-y-1">
+                      <p className="font-semibold text-[var(--c-text)]">eSIM ที่แนะนำ</p>
+                      <p>• <span className="font-semibold">Klook eSIM (DOCOMO)</span> — เน็ตไม่จำกัด, เครือข่าย DOCOMO ดีสุดในญี่ปุ่น</p>
+                      <p>• Trip.com eSIM — เริ่ม ~31 บาท/วัน</p>
+                      <p>• Airalo — แอป eSIM ระดับโลก หลายแพ็กเกจ</p>
+                      <p className="mt-1">• eSIM 1 ตัว <span className="font-semibold">แชร์ hotspot</span> ให้คนอื่นได้</p>
+                      <p>• ซื้อก่อนเดินทาง 1-2 วัน เพื่อทดสอบการติดตั้ง</p>
+                      <p>• เลือกแพ็กเกจ <span className="font-semibold">unlimited data</span> จะสบายใจกว่า</p>
+                    </div>
+                  </div>
+                </details>
+
+                {/* 4. ซิมจาก Klook */}
+                <details className="group rounded-[12px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] overflow-hidden">
+                  <summary className="flex items-center gap-3 p-3.5 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="w-8 h-8 rounded-full bg-[#BF5AF2]/12 flex items-center justify-center text-[16px] shrink-0">🎫</span>
+                    <span className="flex-1 text-[15px] font-semibold text-[var(--c-text)]">4. eSIM จาก Klook — วิธีรับ+ใช้</span>
+                    <span className="text-[12px] text-[var(--c-text-3)] group-open:rotate-90 transition-transform">▶</span>
+                  </summary>
+                  <div className="px-3.5 pb-3.5 space-y-2">
+                    <div className="text-[13px] text-[var(--c-text-2)] leading-relaxed space-y-1.5">
+                      <p className="font-semibold text-[var(--c-text)]">ขั้นตอนที่ 1: สั่งซื้อ</p>
+                      <p>• แอป Klook หรือเว็บ klook.com &rarr; ค้นหา &quot;Japan eSIM DOCOMO&quot; &rarr; เลือกแพ็กเกจ 8 วัน unlimited &rarr; ชำระเงิน</p>
+                      <p className="font-semibold text-[var(--c-text)] mt-2">ขั้นตอนที่ 2: รับ QR code</p>
+                      <p>• ได้ <span className="font-semibold">QR code ทันทีทาง email + ในแอป Klook</span> (ไม่ต้องรอรับที่สนามบิน ไม่ต้องส่งบ้าน)</p>
+                      <p className="font-semibold text-[var(--c-text)] mt-2">ขั้นตอนที่ 3: ติดตั้ง</p>
+                      <p>• เปิดแอป Klook &rarr; Account &rarr; Bookings &rarr; กด Activate</p>
+                      <p>• หรือ Settings &rarr; Cellular &rarr; SIMs &rarr; Add eSIM &rarr; สแกน QR code</p>
+                      <p>• ติดตั้งขณะ <span className="font-semibold">เชื่อมต่อ WiFi</span> (ก่อนขึ้นเครื่อง)</p>
+                      <p className="font-semibold text-[var(--c-text)] mt-2">ขั้นตอนที่ 4: เปิดใช้งาน</p>
+                      <p>• ถึงญี่ปุ่น &rarr; เปิด Data Roaming ของ eSIM ตัวใหม่ &rarr; ตั้งเป็น Cellular Data หลัก</p>
+                      <p>• ซิมไทยเดิมยังรับ SMS/โทรได้ตามปกติ</p>
+                    </div>
+                  </div>
+                </details>
+
+                {/* 5. YouTrip & SCB Planet */}
+                <details className="group rounded-[12px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] overflow-hidden">
+                  <summary className="flex items-center gap-3 p-3.5 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="w-8 h-8 rounded-full bg-[#FF453A]/12 flex items-center justify-center text-[16px] shrink-0">💳</span>
+                    <span className="flex-1 text-[15px] font-semibold text-[var(--c-text)]">5. YouTrip &amp; SCB Planet</span>
+                    <span className="text-[12px] text-[var(--c-text-3)] group-open:rotate-90 transition-transform">▶</span>
+                  </summary>
+                  <div className="px-3.5 pb-3.5 space-y-2">
+                    <div className="rounded-lg bg-[#007AFF]/8 p-3">
+                      <p className="text-[13px] font-semibold text-[#007AFF] mb-1">YouTrip (Mastercard)</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">• แลกเยนล่วงหน้าในแอป YouTrip (lock rate ได้)</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">• เรท Mastercard wholesale — ไม่มี markup</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">• กด ATM ญี่ปุ่น <span className="font-semibold text-[#30D158]">ฟรีค่าธรรมเนียม</span> (7-Eleven, Japan Post, Lawson)</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">• เติมเงินผ่าน K-Plus</p>
+                    </div>
+                    <div className="rounded-lg bg-[#BF5AF2]/8 p-3">
+                      <p className="text-[13px] font-semibold text-[#BF5AF2] mb-1">SCB Planet (VISA)</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">• แลกเยนล่วงหน้าในแอป SCB Easy (lock rate 24 ชม.)</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">• เรทเทียบเท่าร้านแลกเงิน — ไม่มี markup</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">• กด ATM ค่าธรรมเนียม 100 บาท/ครั้ง (กดที่ AEON ATM ฝั่งตู้ฟรี)</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">• รองรับ 13 สกุลเงิน (มากกว่า YouTrip)</p>
+                    </div>
+                    <div className="rounded-lg bg-[#FF9F0A]/8 p-3">
+                      <p className="text-[13px] font-semibold text-[#FF9F0A] mb-1">ทริคสำคัญ</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">• <span className="font-semibold text-[var(--c-text)]">พกทั้งสองใบ</span> ไว้สำรองกัน</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">• กดเงินสด &rarr; ใช้ <span className="font-semibold">YouTrip</span> (ฟรี)</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">• Lock rate &rarr; ใช้ <span className="font-semibold">SCB Planet</span> เมื่อเจอเรทดี</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">• ตอนรูดในญี่ปุ่น <span className="font-semibold text-[#FF453A]">เลือกจ่ายเป็น JPY เสมอ</span> อย่าเลือก THB</p>
+                    </div>
+                  </div>
+                </details>
+
+                {/* 6. บัตร Suica */}
+                <details className="group rounded-[12px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] overflow-hidden">
+                  <summary className="flex items-center gap-3 p-3.5 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="w-8 h-8 rounded-full bg-[#64D2FF]/12 flex items-center justify-center text-[16px] shrink-0">🚃</span>
+                    <span className="flex-1 text-[15px] font-semibold text-[var(--c-text)]">6. บัตร Suica</span>
+                    <span className="text-[12px] text-[var(--c-text-3)] group-open:rotate-90 transition-transform">▶</span>
+                  </summary>
+                  <div className="px-3.5 pb-3.5 space-y-2">
+                    <div className="rounded-lg bg-[#64D2FF]/8 p-3">
+                      <p className="text-[13px] font-semibold text-[#64D2FF] mb-1">Suica คืออะไร?</p>
+                      <p className="text-[13px] text-[var(--c-text-2)] leading-relaxed">บัตรเติมเงิน IC Card ของ JR East — ใช้แตะเข้า-ออกรถไฟ, ซื้อของ convenience store, ตู้กดเครื่องดื่ม, ล็อกเกอร์สถานี</p>
+                    </div>
+                    <div className="text-[13px] text-[var(--c-text-2)] leading-relaxed space-y-1.5">
+                      <p className="font-semibold text-[var(--c-text)]">สร้างบน iPhone (ทำที่บ้านได้เลย)</p>
+                      <p>1. เปิดแอป <span className="font-semibold">Wallet</span> &rarr; กดปุ่ม + &rarr; Transit Card &rarr; เลือก Suica</p>
+                      <p>2. เลือกเติมครั้งแรกขั้นต่ำ <span className="font-semibold">1,000 เยน</span></p>
+                      <p>3. ชำระผ่านบัตรเครดิตใน Apple Pay &rarr; ยืนยัน Face ID</p>
+                      <p>4. ได้ Suica ทันที!</p>
+                      <p className="font-semibold text-[var(--c-text)] mt-2">เติมเงิน</p>
+                      <p>• ผ่าน Wallet &rarr; แตะ Suica &rarr; Add Money &rarr; เลือกจำนวน</p>
+                      <p>• ที่ตู้ขายตั๋วในสถานี (IC Charge) หยอดเงินสด</p>
+                      <p>• ที่ร้าน convenience store — บอก &quot;Suica charge&quot;</p>
+                      <p className="font-semibold text-[var(--c-text)] mt-2">ใช้อะไรได้บ้าง</p>
+                      <p>• 🚃 รถไฟ/รถไฟใต้ดิน/รถบัส ทุกสาย</p>
+                      <p>• 🏪 Convenience store (7-Eleven, FamilyMart, Lawson)</p>
+                      <p>• 🥤 ตู้กดเครื่องดื่ม, ล็อกเกอร์, ร้านอาหาร</p>
+                      <p className="font-semibold text-[#FF9F0A] mt-2">ทริคสำคัญ</p>
+                      <p>• เปิด <span className="font-semibold">Express Transit Mode</span> — แตะได้โดยไม่ต้องปลดล็อก</p>
+                      <p>• วงเงินสูงสุดเติมได้ 20,000 เยน/บัตร</p>
+                      <p>• ครอบครัว 4 คน: สร้าง Suica <span className="font-semibold">แยกคนละ iPhone</span></p>
+                      <p>• คนไม่มี iPhone &rarr; ซื้อ <span className="font-semibold">Welcome Suica</span> (บัตรกายภาพ) ที่สถานี Narita / JR ใหญ่ๆ</p>
+                    </div>
+                  </div>
+                </details>
+
+                {/* 7. Print ประกันการเดินทาง */}
+                <details className="group rounded-[12px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] overflow-hidden">
+                  <summary className="flex items-center gap-3 p-3.5 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="w-8 h-8 rounded-full bg-[#FF453A]/12 flex items-center justify-center text-[16px] shrink-0">🛡️</span>
+                    <span className="flex-1 text-[15px] font-semibold text-[var(--c-text)]">7. Print ประกันการเดินทาง</span>
+                    <span className="text-[12px] text-[var(--c-text-3)] group-open:rotate-90 transition-transform">▶</span>
+                  </summary>
+                  <div className="px-3.5 pb-3.5 space-y-1.5 text-[13px] text-[var(--c-text-2)] leading-relaxed">
+                    <p>• Print กรมธรรม์ประกันเดินทาง (Travel Insurance) ทุกคน</p>
+                    <p>• เก็บไว้ในแฟ้มเดินทาง + บันทึกไฟล์ PDF ไว้ในมือถือด้วย</p>
+                    <p>• สิ่งสำคัญ: เลขกรมธรรม์, เบอร์ hotline ฉุกเฉิน 24 ชม., วงเงินคุ้มครอง</p>
+                    <p>• บางประกันต้องโชว์ตอน check-in หรือเข้าเมือง</p>
+                  </div>
+                </details>
+
+                {/* 8. เตรียม Passport */}
+                <details className="group rounded-[12px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] overflow-hidden">
+                  <summary className="flex items-center gap-3 p-3.5 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="w-8 h-8 rounded-full bg-[#007AFF]/12 flex items-center justify-center text-[16px] shrink-0">🛂</span>
+                    <span className="flex-1 text-[15px] font-semibold text-[var(--c-text)]">8. เตรียม Passport ทุกคน</span>
+                    <span className="text-[12px] text-[var(--c-text-3)] group-open:rotate-90 transition-transform">▶</span>
+                  </summary>
+                  <div className="px-3.5 pb-3.5 space-y-1.5 text-[13px] text-[var(--c-text-2)] leading-relaxed">
+                    <p>• เช็ค Passport <span className="font-semibold text-[var(--c-text)]">ทั้ง 4 เล่ม</span> — หมดอายุต้องเหลืออย่างน้อย 6 เดือน</p>
+                    <p>• ถ่ายรูปหน้า Passport เก็บไว้ในมือถือทุกคน (สำรองกรณีหาย)</p>
+                    <p>• เตรียม <span className="font-semibold text-[var(--c-text)]">สำเนา Passport</span> อย่างน้อยคนละ 1 ชุด แยกเก็บคนละที่กับตัวจริง</p>
+                    <p>• เข้าญี่ปุ่นไม่ต้องวีซ่า (คนไทยอยู่ได้ 15 วัน)</p>
+                  </div>
+                </details>
+
+                {/* 9. Coupon Lounge + บัตรเครดิต */}
+                <details className="group rounded-[12px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] overflow-hidden">
+                  <summary className="flex items-center gap-3 p-3.5 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="w-8 h-8 rounded-full bg-[#FF9F0A]/12 flex items-center justify-center text-[16px] shrink-0">🎟️</span>
+                    <span className="flex-1 text-[15px] font-semibold text-[var(--c-text)]">9. Coupon เข้า Lounge + บัตรเครดิต</span>
+                    <span className="text-[12px] text-[var(--c-text-3)] group-open:rotate-90 transition-transform">▶</span>
+                  </summary>
+                  <div className="px-3.5 pb-3.5 space-y-1.5 text-[13px] text-[var(--c-text-2)] leading-relaxed">
+                    <p>• เตรียม <span className="font-semibold text-[var(--c-text)]">Coupon / Voucher เข้า Miracle Lounge</span></p>
+                    <p>• พกบัตรเครดิตที่ได้สิทธิ์เข้า Lounge ไปด้วย (ต้องโชว์ตอนเข้า)</p>
+                    <p>• เช็คเงื่อนไข: จำนวนคนต่อบัตร, ต้องเป็นเที่ยวบินขาออกระหว่างประเทศ</p>
+                    <p>• Print หรือ Screenshot coupon เก็บไว้ (บาง Lounge ไม่รับดิจิทัล)</p>
+                    <p className="font-semibold text-[#FF9F0A]">จุดสังเกต Miracle Lounge ที่ DMK:</p>
+                    <p>• ผ่าน ตม. แล้ว เดินผ่านร้าน King Power Duty Free แล้ว <span className="font-semibold text-[var(--c-text)]">&quot;เลี้ยวซ้าย&quot;</span> (ทางไป Gate 1-6)</p>
+                  </div>
+                </details>
+
+                {/* 10. สูติบัตรลูก */}
+                <details className="group rounded-[12px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] overflow-hidden">
+                  <summary className="flex items-center gap-3 p-3.5 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="w-8 h-8 rounded-full bg-[#30D158]/12 flex items-center justify-center text-[16px] shrink-0">👶</span>
+                    <span className="flex-1 text-[15px] font-semibold text-[var(--c-text)]">10. สูติบัตรลูก</span>
+                    <span className="text-[12px] text-[var(--c-text-3)] group-open:rotate-90 transition-transform">▶</span>
+                  </summary>
+                  <div className="px-3.5 pb-3.5 space-y-1.5 text-[13px] text-[var(--c-text-2)] leading-relaxed">
+                    <p>• สูติบัตร (Birth Certificate) สำหรับเด็กที่เดินทาง</p>
+                    <p>• ใช้ยืนยันความสัมพันธ์พ่อ-แม่-ลูก กรณี ตม. ถาม</p>
+                    <p>• พก <span className="font-semibold text-[var(--c-text)]">ตัวจริง + สำเนา</span></p>
+                    <p>• ถ่ายรูปเก็บไว้ในมือถือด้วย</p>
+                  </div>
+                </details>
+
+                {/* 11. Print QR Visit Japan Web */}
+                <details className="group rounded-[12px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] overflow-hidden">
+                  <summary className="flex items-center gap-3 p-3.5 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="w-8 h-8 rounded-full bg-[#BF5AF2]/12 flex items-center justify-center text-[16px] shrink-0">📱</span>
+                    <span className="flex-1 text-[15px] font-semibold text-[var(--c-text)]">11. Print QR Visit Japan Web</span>
+                    <span className="text-[12px] text-[var(--c-text-3)] group-open:rotate-90 transition-transform">▶</span>
+                  </summary>
+                  <div className="px-3.5 pb-3.5 space-y-1.5 text-[13px] text-[var(--c-text-2)] leading-relaxed">
+                    <p>• ลงทะเบียนที่ <span className="font-semibold text-[var(--c-text)]">vjw.digital.go.jp</span> &mdash; กรอกข้อมูล <span className="font-semibold text-[var(--c-text)]">ทั้ง 4 คน</span></p>
+                    <p>• ได้ QR code 2 อัน: (1) <span className="font-semibold">ตม. เข้าเมือง</span> (2) <span className="font-semibold">ศุลกากร</span></p>
+                    <p>• <span className="font-semibold text-[#FF453A]">Print QR ทุกคน</span> ไว้ในกระดาษ &mdash; เผื่อมือถือไม่มีเน็ต/แบตหมด</p>
+                    <p>• Screenshot เก็บไว้ในมือถือด้วย (เปิดได้แม้ offline)</p>
+                    <p>• กรอกข้อมูลล่วงหน้าก่อนเดินทาง 1-2 สัปดาห์ได้เลย</p>
+                  </div>
+                </details>
+
+                {/* 12. Print แผนเดินทาง + ใบจองโรงแรม */}
+                <details className="group rounded-[12px] border border-[var(--c-sep)] bg-[var(--c-subtle-card)] overflow-hidden">
+                  <summary className="flex items-center gap-3 p-3.5 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="w-8 h-8 rounded-full bg-[#64D2FF]/12 flex items-center justify-center text-[16px] shrink-0">🖨️</span>
+                    <span className="flex-1 text-[15px] font-semibold text-[var(--c-text)]">12. Print แผนเดินทาง + ใบจองโรงแรม</span>
+                    <span className="text-[12px] text-[var(--c-text-3)] group-open:rotate-90 transition-transform">▶</span>
+                  </summary>
+                  <div className="px-3.5 pb-3.5 space-y-1.5 text-[13px] text-[var(--c-text-2)] leading-relaxed">
+                    <p>• Print <span className="font-semibold text-[var(--c-text)]">ใบจองโรงแรม</span> (Booking Confirmation) &mdash; ใช้แสดงตอน check-in + เผื่อ ตม. ถาม</p>
+                    <p>• Print <span className="font-semibold text-[var(--c-text)]">ตั๋วเครื่องบิน / Boarding Pass</span></p>
+                    <p>• Print <span className="font-semibold text-[var(--c-text)]">แผนเดินทาง</span> (Itinerary) แต่ละวัน &mdash; เผื่อมือถือใช้ไม่ได้</p>
+                    <p>• รวมเอกสารทั้งหมดไว้ใน <span className="font-semibold text-[var(--c-text)]">แฟ้มเดินทาง 1 แฟ้ม</span></p>
+                  </div>
+                </details>
+              </div>
+            </div>
+
             {/* Timeline */}
             <div className="rounded-[16px] border border-[var(--c-sep)] bg-[var(--c-card-alt)] p-4 md:p-6">
               <p className="text-[20px] font-semibold text-[var(--c-text)] mb-5">ไทม์ไลน์ Day 1</p>
               <div className="relative space-y-0">
                 {[
-                  { time: "09:50", icon: "🏠", title: "ออกจากบ้าน", note: "คำนวณตามเงื่อนไข: ออกก่อนเวลาไฟลท์ 2 ชั่วโมง", phase: "th" as const },
-                  { time: "10:20", icon: "🛫", title: "ถึงสนามบินดอนเมือง (DMK)", note: "เช็กอิน + ผ่านจุดตรวจ", phase: "th" as const },
-                  { time: "11:20", icon: "🚪", title: "พร้อมที่เกต", note: "เผื่อเวลาขึ้นเครื่องและตรวจเอกสาร", phase: "th" as const },
+                  { time: "08:00", icon: "🏠", title: "ออกจากบ้าน", note: "ออกไม่เกิน 08:30 — ซื้อขนมปังกินบน Taxi / ซื้อชารอไว้ หรือไม่ซื้อเลยไปกินที่ Lounge", phase: "th" as const },
+                  { time: "09:30", icon: "🛫", title: "ถึงสนามบินดอนเมือง (DMK)", note: "เช็กอิน + ซื้อขนมปัง + เข้า Gate", phase: "th" as const },
+                  { time: "10:00", icon: "🍽️", title: "กิน Miracle Lounge", note: "จุดสังเกต: พอผ่าน ตม. เข้ามาแล้ว เดินผ่านร้าน King Power Duty Free แล้ว \"เลี้ยวซ้าย\" (ทางไป Gate 1-6)", phase: "th" as const },
+                  { time: "10:00-\n11:15", icon: "🚶", title: "กินเสร็จ → เดินเล่น / รอที่ Gate", note: "เดินดูร้านค้าหรือนั่งรอที่ Gate ก่อนขึ้นเครื่อง", phase: "th" as const },
                   { time: "11:50", icon: "✈️", title: "เครื่องออก XJ 606", note: "บินตรง DMK → NRT", phase: "fly" as const },
                   { time: "20:00", icon: "🛬", title: "ถึงสนามบินนาริตะ (NRT)", note: "เวลาท้องถิ่นโตเกียว — Terminal 1", phase: "jp" as const },
                   { time: "20:00-\n21:15", icon: "🛂", title: "ตม. + รับกระเป๋า + ศุลกากร", note: "เปิด QR Visit Japan Web ทั้ง 4 คน → รับกระเป๋า → สแกน QR ศุลกากร → ออก Arrival Hall ชั้น 1", phase: "jp" as const },
@@ -95,8 +368,8 @@ export default async function TokyoDayPage({
                     {/* Timeline line */}
                     <div className="flex flex-col items-center">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0 ${
-                        row.phase === "fly" ? "bg-[#FF9F0A]/15 ring-2 ring-[#FF9F0A]/40" :
-                        row.phase === "jp" ? "bg-[#FF453A]/10 ring-2 ring-[#FF453A]/30" :
+                        row.phase === "fly" ? "bg-[#FF9F0A]/22 ring-2 ring-[#FF9F0A]/40" :
+                        row.phase === "jp" ? "bg-[#FF453A]/18 ring-2 ring-[#FF453A]/30" :
                         "bg-[var(--c-accent)]/10 ring-2 ring-[var(--c-accent)]/30"
                       }`}>
                         {row.icon}
@@ -116,7 +389,7 @@ export default async function TokyoDayPage({
                           "text-[var(--c-accent)]"
                         }`}>{row.time}</span>
                         {row.phase === "fly" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">ON AIR</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/22 text-[#FF9F0A]">ON AIR</span>
                         )}
                       </div>
                       <p className="text-[16px] font-semibold text-[var(--c-text)] mt-1 leading-tight">{row.title}</p>
@@ -133,7 +406,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Tips */}
-            <div className="rounded-[16px] border border-[#30D158]/30 bg-[#30D158]/5 p-5">
+            <div className="rounded-[16px] border border-[#30D158]/40 bg-[#30D158]/12 p-5">
               <p className="text-[16px] font-semibold text-[#30D158] mb-3">ทริคเสริมกันลืม</p>
               <div className="space-y-2.5">
                 {[
@@ -241,10 +514,12 @@ export default async function TokyoDayPage({
                 {[
                   { time: "08:00", icon: "🥪", title: "ตื่นนอน & มื้อเช้าในห้องพัก", note: "แซนด์วิช/นม เตรียมตัวลุย", tag: "" },
                   { time: "09:00", icon: "🚶", title: "เดินไป Yodobashi Akiba", note: "จากโรงแรม 800 เมตร (10-15 นาที) ไม่ต้องเสียค่ารถไฟ", tag: "" },
-                  { time: "09:30", icon: "🏢", title: "Yodobashi Akiba", note: "ห้างเปิดพอดี! ดูรายละเอียดชั้นด้านล่าง", tag: "ช้อปปิ้ง", mapQuery: "Yodobashi+Akiba+Akihabara" },
-                  { time: "12:00", icon: "🍣", title: "มื้อเที่ยง: Miura Misaki Port Ueno", note: "ซูชิสายพานหน้าล้น เครื่องพูนจัดเต็ม ใกล้สถานี Ueno", tag: "มื้อเที่ยง", mapQuery: "Miura-misaki-kou+Ueno" },
-                  { time: "13:30", icon: "🚃", title: "ย้ายไป Ueno (JR Yamanote 2 สถานี)", note: "Yamashiroya: ตึกของเล่นตรงข้ามสถานี (Sanrio/Disney Princess ชั้น 2)", tag: "", mapQuery: "Yamashiroya+Ueno" },
-                  { time: "14:00", icon: "💯", title: "Seria (ตึก Marui ชั้น 7)", note: "Sanrio ลิขสิทธิ์แท้ ทุกชิ้น 100 เยน น่ารักกว่า Daiso!", tag: "ช้อปปิ้ง", mapQuery: "Seria+Marui+Ueno" },
+                  { time: "09:30", icon: "🏢", title: "Yodobashi Akiba", note: "ห้างเปิดพอดี! ดูรายละเอียดชั้นด้านล่าง (ใช้เวลา ~2 ชม.)", tag: "ช้อปปิ้ง", mapQuery: "Yodobashi+Akiba+Akihabara" },
+                  { time: "11:30", icon: "🚶", title: "เดินไปสถานี JR Akihabara", note: "ออกจาก Yodobashi → เดินไปสถานี JR (~5 นาที)", tag: "" },
+                  { time: "11:40", icon: "🚃", title: "นั่ง JR Yamanote → Ueno (2 สถานี)", note: "ใช้เวลา ~4 นาที → ถึง Ueno ~11:45", tag: "" },
+                  { time: "11:50", icon: "🍣", title: "มื้อเที่ยง: Miura Misaki Port Ueno", note: "ถึงก่อนคนแน่น! ซูชิสายพานหน้าล้น เครื่องพูนจัดเต็ม ใกล้สถานี Ueno", tag: "มื้อเที่ยง", mapQuery: "Miura-misaki-kou+Ueno" },
+                  { time: "13:00", icon: "🧸", title: "Yamashiroya (ตรงข้ามสถานี Ueno)", note: "ตึกของเล่น 6 ชั้น — Sanrio/Disney Princess ชั้น 2, เดินดูเพลินๆ หลังกินข้าว", tag: "ช้อปปิ้ง", mapQuery: "Yamashiroya+Ueno" },
+                  { time: "13:45", icon: "💯", title: "Seria (ตึก Marui ชั้น 7)", note: "Sanrio ลิขสิทธิ์แท้ ทุกชิ้น 100 เยน น่ารักกว่า Daiso!", tag: "ช้อปปิ้ง", mapQuery: "Seria+Marui+Ueno" },
                   { time: "15:30", icon: "👟", title: "ตลาด Ameyoko & ภารกิจซื้อกระเป๋า", note: "London Sports: รองเท้าราคาถูก / Ginza Karen (สาขา Ueno): กระเป๋าเดินทางใบใหม่ 5,500-7,700 เยน", tag: "ช้อปปิ้ง", mapQuery: "Ameyoko+Market+Ueno" },
                   { time: "16:30", icon: "👕", title: "Uniqlo Okachimachi", note: "ตึก Yoshiike — ซื้อเสื้อผ้า Uniqlo/GU ร้านใหญ่", tag: "ช้อปปิ้ง", mapQuery: "Uniqlo+Okachimachi" },
                   { time: "17:30", icon: "🏨", title: "นำกระเป๋าไปเก็บที่โรงแรม", note: "นั่ง JR กลับ Asakusabashi แป๊บเดียว แล้วเตรียมตัวไปทานข้าว", tag: "" },
@@ -266,8 +541,8 @@ export default async function TokyoDayPage({
                         {row.tag && (
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             row.tag === "มื้อเที่ยง" || row.tag === "มื้อเย็น"
-                              ? "bg-[#FF9F0A]/15 text-[#FF9F0A]"
-                              : "bg-[#BF5AF2]/15 text-[#BF5AF2]"
+                              ? "bg-[#FF9F0A]/22 text-[#FF9F0A]"
+                              : "bg-[#BF5AF2]/22 text-[#BF5AF2]"
                           }`}>{row.tag}</span>
                         )}
                       </div>
@@ -299,9 +574,9 @@ export default async function TokyoDayPage({
               <p className="text-[13px] text-[var(--c-text-2)] mb-4">เปิด 09:30 น. ใช้เวลาประมาณ 2-2.5 ชม.</p>
               <div className="space-y-2.5">
                 {[
-                  { floor: "ชั้น 7", who: "แม่ & รองเท้า", color: "bg-[#FF6482]/10 text-[#FF6482] border-[#FF6482]/30", items: "ABC-MART (รองเท้าผ้าใบเด็ก/ผู้ใหญ่ รุ่นใหม่/ใส่สบาย) + DAISO (ของ Sanrio ราคา 100 เยน)" },
-                  { floor: "ชั้น 6", who: "ลูกๆ", color: "bg-[#FF9F0A]/10 text-[#FF9F0A] border-[#FF9F0A]/30", items: "Tomica / Marvel / Disney — ปล่อยลูกดูของเล่น" },
-                  { floor: "ชั้น 1-5", who: "พ่อ", color: "bg-[#64D2FF]/10 text-[#64D2FF] border-[#64D2FF]/30", items: "คอมพิวเตอร์ / กล้อง / เกม" },
+                  { floor: "ชั้น 7", who: "แม่ & รองเท้า", color: "bg-[#FF6482]/18 text-[#FF6482] border-[#FF6482]/40", items: "ABC-MART (รองเท้าผ้าใบเด็ก/ผู้ใหญ่ รุ่นใหม่/ใส่สบาย) + DAISO (ของ Sanrio ราคา 100 เยน)" },
+                  { floor: "ชั้น 6", who: "ลูกๆ", color: "bg-[#FF9F0A]/18 text-[#FF9F0A] border-[#FF9F0A]/40", items: "Tomica / Marvel / Disney — ปล่อยลูกดูของเล่น" },
+                  { floor: "ชั้น 1-5", who: "พ่อ", color: "bg-[#64D2FF]/18 text-[#64D2FF] border-[#64D2FF]/40", items: "คอมพิวเตอร์ / กล้อง / เกม" },
                 ].map((f) => (
                   <div key={f.floor} className={`rounded-[12px] border ${f.color} p-4`}>
                     <div className="flex items-center gap-3 mb-1.5">
@@ -336,7 +611,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Tips */}
-            <div className="rounded-[16px] border border-[#30D158]/30 bg-[#30D158]/5 p-5">
+            <div className="rounded-[16px] border border-[#30D158]/40 bg-[#30D158]/12 p-5">
               <p className="text-[16px] font-semibold text-[#30D158] mb-3">ทริค Day 2</p>
               <div className="space-y-2.5">
                 {[
@@ -356,7 +631,7 @@ export default async function TokyoDayPage({
         ) : dayNumber === 3 ? (
           <div className="space-y-5">
             {/* Header */}
-            <div className="rounded-[18px] border border-[#BF5AF2]/40 bg-[#BF5AF2]/5 p-5 md:p-7">
+            <div className="rounded-[18px] border border-[#BF5AF2]/45 bg-[#BF5AF2]/12 p-5 md:p-7">
               <p className="text-[24px] md:text-[34px] font-bold text-[var(--c-text)] leading-tight">Day 3: Tokyo DisneySea</p>
               <p className="text-[14px] mt-2 text-[var(--c-text-2)]">วันอังคาร 3 มีนาคม 2026 — Fantasy Springs &middot; Frozen &middot; Toy Story &middot; Believe!</p>
               <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -366,7 +641,7 @@ export default async function TokyoDayPage({
                   { label: "โชว์ค่ำ", value: "Believe! ~19:15", icon: "🎆" },
                   { label: "ค่าตั๋ว DPA", value: "~5,800 เยน", icon: "🎫" },
                 ].map((card) => (
-                  <div key={card.label} className="rounded-[14px] border border-[#BF5AF2]/25 bg-[#BF5AF2]/8 p-4">
+                  <div key={card.label} className="rounded-[14px] border border-[#BF5AF2]/35 bg-[#BF5AF2]/15 p-4">
                     <span className="text-[20px]">{card.icon}</span>
                     <p className="text-[12px] text-[var(--c-text-2)] mt-2">{card.label}</p>
                     <p className="text-[14px] font-semibold text-[var(--c-text)] mt-0.5">{card.value}</p>
@@ -376,14 +651,14 @@ export default async function TokyoDayPage({
             </div>
 
             {/* DPA Strategy */}
-            <div className="rounded-[16px] border border-[#FF9F0A]/30 bg-[#FF9F0A]/5 p-4 md:p-6">
+            <div className="rounded-[16px] border border-[#FF9F0A]/40 bg-[#FF9F0A]/12 p-4 md:p-6">
               <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">กลยุทธ์ DPA &amp; Priority Pass</p>
               <p className="text-[13px] text-[var(--c-text-2)] mb-4">กดทันทีตอน 09:00 ประตูเปิด — แม่กด DPA / พ่อกด Priority Pass</p>
               <div className="space-y-3">
                 {[
-                  { time: "09:00", who: "แม่", type: "DPA (เสียเงิน)", ride: "Frozen Journey", icon: "❄️", color: "bg-[#64D2FF]/10 text-[#64D2FF] border-[#64D2FF]/30" },
-                  { time: "09:00", who: "พ่อ", type: "Priority Pass (ฟรี)", ride: "Nemo & Friends SeaRider (รอบ 09:30-10:00)", icon: "🐠", color: "bg-[#30D158]/10 text-[#30D158] border-[#30D158]/30" },
-                  { time: "10:00", who: "ใครก็ได้", type: "DPA ใบที่ 2 (ครบ 1 ชม.)", ride: "Peter Pan หรือ Toy Story Mania", icon: "🧸", color: "bg-[#FF9F0A]/10 text-[#FF9F0A] border-[#FF9F0A]/30" },
+                  { time: "09:00", who: "แม่", type: "DPA (เสียเงิน)", ride: "Frozen Journey", icon: "❄️", color: "bg-[#64D2FF]/18 text-[#64D2FF] border-[#64D2FF]/40" },
+                  { time: "09:00", who: "พ่อ", type: "Priority Pass (ฟรี)", ride: "Nemo & Friends SeaRider (รอบ 09:30-10:00)", icon: "🐠", color: "bg-[#30D158]/18 text-[#30D158] border-[#30D158]/40" },
+                  { time: "10:00", who: "ใครก็ได้", type: "DPA ใบที่ 2 (ครบ 1 ชม.)", ride: "Peter Pan หรือ Toy Story Mania", icon: "🧸", color: "bg-[#FF9F0A]/18 text-[#FF9F0A] border-[#FF9F0A]/40" },
                 ].map((dpa, i) => (
                   <div key={i} className={`rounded-[12px] border ${dpa.color} p-4`}>
                     <div className="flex items-center gap-2.5 flex-wrap mb-1.5">
@@ -394,7 +669,7 @@ export default async function TokyoDayPage({
                     <p className="text-[15px] font-semibold text-[var(--c-text)]">{dpa.ride}</p>
                   </div>
                 ))}
-                <div className="rounded-[10px] bg-[#FF453A]/10 border border-[#FF453A]/25 px-3.5 py-2.5 mt-2">
+                <div className="rounded-[10px] bg-[#FF453A]/18 border border-[#FF453A]/35 px-3.5 py-2.5 mt-2">
                   <p className="text-[13px] text-[#FF453A] font-medium">ตั้งนาฬิกาปลุก 10:00 น. เพื่อกด DPA ใบที่ 2 ทันที!</p>
                 </div>
               </div>
@@ -426,7 +701,7 @@ export default async function TokyoDayPage({
                     <div className="flex flex-col items-center">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0 ${
                         row.phase === "travel" ? "bg-[var(--c-accent)]/10 ring-2 ring-[var(--c-accent)]/30" :
-                        row.phase === "food" ? "bg-[#FF9F0A]/10 ring-2 ring-[#FF9F0A]/30" :
+                        row.phase === "food" ? "bg-[#FF9F0A]/18 ring-2 ring-[#FF9F0A]/30" :
                         "bg-[#BF5AF2]/10 ring-2 ring-[#BF5AF2]/30"
                       }`}>
                         {row.icon}
@@ -447,7 +722,7 @@ export default async function TokyoDayPage({
                           "text-[var(--c-accent)]"
                         }`}>{row.time}</span>
                         {row.phase === "food" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">อาหาร</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/22 text-[#FF9F0A]">อาหาร</span>
                         )}
                       </div>
                       <p className="text-[16px] font-semibold text-[var(--c-text)] mt-1 leading-tight">{row.title}</p>
@@ -472,11 +747,11 @@ export default async function TokyoDayPage({
                       { name: "Casbah Food Court", zone: "Arabian Coast", icon: "🧞", desc: "แกงกะหรี่ไก่ + แป้งนาน — ที่นั่งเยอะ แอร์เย็น เด็กชอบฉีกนานจิ้มแกง", price: "~1,100-1,300 เยน", primary: false },
                       { name: "Yucatan Base Camp Grill", zone: "Lost River Delta", icon: "⛺", desc: "ไก่รมควันชิ้นใหญ่ / สเต็กหมู — เน้นโปรตีน สำหรับสายกินจุ", price: "~1,600-2,000 เยน", primary: false },
                     ].map((r, i) => (
-                      <div key={r.name} className={`rounded-[12px] border p-4 ${r.primary ? "border-[#FF9F0A]/30 bg-[#FF9F0A]/5" : "border-[var(--c-sep)] bg-[var(--c-subtle-card)]"}`}>
+                      <div key={r.name} className={`rounded-[12px] border p-4 ${r.primary ? "border-[#FF9F0A]/40 bg-[#FF9F0A]/12" : "border-[var(--c-sep)] bg-[var(--c-subtle-card)]"}`}>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-[16px]">{r.icon}</span>
                           <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
-                          {r.primary && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">แนะนำ</span>}
+                          {r.primary && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/22 text-[#FF9F0A]">แนะนำ</span>}
                           {!r.primary && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--c-fill-2)] text-[var(--c-text-2)]">สำรอง {i}</span>}
                         </div>
                         <p className="text-[12px] text-[var(--c-text-2)]">{r.zone} &middot; {r.price}</p>
@@ -494,11 +769,11 @@ export default async function TokyoDayPage({
                       { name: "Dockside Diner", zone: "American Waterfront", icon: "🚢", desc: "ไก่ทอดกรอบ + เฟรนช์ฟรายส์ อยู่ใกล้ Toy Story Mania", price: "~1,200-1,500 เยน", primary: false },
                       { name: "Cafe Portofino", zone: "Mediterranean Harbor", icon: "🍗", desc: "ไก่ย่างหมุนครึ่งตัว หนังกรอบเนื้อนุ่ม + พาสต้าคาโบนาร่า", price: "~1,500-2,200 เยน", primary: false },
                     ].map((r, i) => (
-                      <div key={r.name} className={`rounded-[12px] border p-4 ${r.primary ? "border-[#FF9F0A]/30 bg-[#FF9F0A]/5" : "border-[var(--c-sep)] bg-[var(--c-subtle-card)]"}`}>
+                      <div key={r.name} className={`rounded-[12px] border p-4 ${r.primary ? "border-[#FF9F0A]/40 bg-[#FF9F0A]/12" : "border-[var(--c-sep)] bg-[var(--c-subtle-card)]"}`}>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-[16px]">{r.icon}</span>
                           <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
-                          {r.primary && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">แนะนำ</span>}
+                          {r.primary && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/22 text-[#FF9F0A]">แนะนำ</span>}
                           {!r.primary && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--c-fill-2)] text-[var(--c-text-2)]">สำรอง {i}</span>}
                         </div>
                         <p className="text-[12px] text-[var(--c-text-2)]">{r.zone} &middot; {r.price}</p>
@@ -554,7 +829,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Tips */}
-            <div className="rounded-[16px] border border-[#30D158]/30 bg-[#30D158]/5 p-5">
+            <div className="rounded-[16px] border border-[#30D158]/40 bg-[#30D158]/12 p-5">
               <p className="text-[16px] font-semibold text-[#30D158] mb-3">ทริค DisneySea</p>
               <div className="space-y-2.5">
                 {[
@@ -586,7 +861,7 @@ export default async function TokyoDayPage({
                   { label: "ช่วงบ่าย", value: "Shibuya ช้อปปิ้ง", icon: "🛍️" },
                   { label: "ชาเขียว", value: "ไอติม 7 ระดับ!", icon: "🍵" },
                 ].map((card) => (
-                  <div key={card.label} className="rounded-[14px] border border-[#FF453A]/25 bg-[#FF453A]/8 p-4">
+                  <div key={card.label} className="rounded-[14px] border border-[#FF453A]/35 bg-[#FF453A]/8 p-4">
                     <span className="text-[20px]">{card.icon}</span>
                     <p className="text-[12px] text-[var(--c-text-2)] mt-2">{card.label}</p>
                     <p className="text-[14px] font-semibold text-[var(--c-text)] mt-0.5">{card.value}</p>
@@ -600,12 +875,13 @@ export default async function TokyoDayPage({
               <p className="text-[20px] font-semibold text-[var(--c-text)] mb-5">ไทม์ไลน์ Day 4</p>
               <div className="relative space-y-0">
                 {[
-                  { time: "09:00", icon: "⛩️", title: "ถึงสถานี Asakusa", note: "ถ่ายรูปกับโคมแดง Kaminarimon", phase: "asakusa" as const, mapQuery: "Kaminarimon+Asakusa" },
-                  { time: "09:15", icon: "🍘", title: "เดินถนน Nakamise ชิมขนม", note: "ซาลาเปาทอด (Kokonoe) / เซมเบ้ (Ichiban-ya) — อย่าเพิ่งอิ่ม!", phase: "asakusa" as const, mapQuery: "Nakamise+Street+Asakusa" },
-                  { time: "10:00", icon: "🙏", title: "ไหว้พระที่วัดเซ็นโซจิ", note: "ขอพรที่วัดเก่าแก่ที่สุดในโตเกียว", phase: "asakusa" as const, mapQuery: "Sensoji+Temple+Asakusa" },
+                  { time: "08:30", icon: "⛩️", title: "ถึง Sensoji (วัดเซ็นโซจิ) — โคมแดง Kaminarimon", note: "ถ่ายรูปกับโคมแดงยักษ์ที่ประตู Kaminarimon (雷門) — มาเช้าคนน้อย ถ่ายรูปสวย!", phase: "asakusa" as const, mapQuery: "Kaminarimon+Asakusa" },
+                  { time: "08:45", icon: "🍘", title: "เดินถนน Nakamise ชิมขนม", note: "ซาลาเปาทอด (Kokonoe) / เซมเบ้ (Ichiban-ya) — อย่าเพิ่งอิ่ม!", phase: "asakusa" as const, mapQuery: "Nakamise+Street+Asakusa" },
+                  { time: "09:30", icon: "🙏", title: "ไหว้พระที่วัดเซ็นโซจิ (Sensoji)", note: "ขอพรที่วัดเก่าแก่ที่สุดในโตเกียว — สร้างปี 645 อายุกว่า 1,300 ปี", phase: "asakusa" as const, mapQuery: "Sensoji+Temple+Asakusa" },
                   { time: "10:30", icon: "⏰", title: "ไปต่อคิวร้าน Asakusa Gyukatsu", note: "สำคัญ! ร้านเปิด 11:00 ไปรอ 10:30 จะได้คิวแรกๆ — อยู่ตรงข้ามวัด", phase: "food" as const, mapQuery: "Asakusa+Gyukatsu" },
                   { time: "11:00", icon: "🥩", title: "มื้อเที่ยง: Asakusa Gyukatsu", note: "เนื้อชุบแป้งทอด ย่างเนื้อบนหินร้อนๆ ฟินมาก!", phase: "food" as const },
                   { time: "12:00", icon: "🍵", title: "ช่วงเวลาแห่งชาเขียว", note: "เดินย่อยอาหาร ดูร้านชาเขียวด้านล่าง", phase: "food" as const },
+                  { time: "12:45", icon: "🏯", title: "วัด Matsuchiyama Shoden (待乳山聖天)", note: "วัดหัวไชเท้าศักดิ์สิทธิ์! เดิน 10 นาทีจาก Sensoji — ขอพรเรื่องเงินทอง/ความอุดมสมบูรณ์ มีรูปหัวไชเท้าประดับทั่ววัด (ถ้าเดินไหวแวะได้)", phase: "asakusa" as const, mapQuery: "Matsuchiyama+Shoden+Asakusa" },
                   { time: "13:30", icon: "🚇", title: "นั่ง Ginza Line ยาวไป Shibuya", note: "จาก Asakusa ไป Shibuya ตรงไม่ต้องเปลี่ยน", phase: "travel" as const },
                   { time: "14:30", icon: "✏️", title: "Hands Shibuya", note: "เป้ EDC ให้พ่อ + เครื่องเขียน/DIY เน้นฟังก์ชันการใช้งาน", phase: "shibuya" as const, mapQuery: "Tokyu+Hands+Shibuya" },
                   { time: "15:30", icon: "🎮", title: "Shibuya Parco", note: "ชั้น 6: Jump Shop / Nintendo / Pokemon Center — ชั้น 2: Porter Exchange (เป้ EDC)", phase: "shibuya" as const, mapQuery: "Shibuya+Parco" },
@@ -617,8 +893,8 @@ export default async function TokyoDayPage({
                   <div key={`${row.time}-${row.title}`} className="flex gap-4">
                     <div className="flex flex-col items-center">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0 ${
-                        row.phase === "asakusa" ? "bg-[#FF453A]/10 ring-2 ring-[#FF453A]/30" :
-                        row.phase === "food" ? "bg-[#FF9F0A]/10 ring-2 ring-[#FF9F0A]/30" :
+                        row.phase === "asakusa" ? "bg-[#FF453A]/18 ring-2 ring-[#FF453A]/30" :
+                        row.phase === "food" ? "bg-[#FF9F0A]/18 ring-2 ring-[#FF9F0A]/30" :
                         row.phase === "shibuya" ? "bg-[#BF5AF2]/10 ring-2 ring-[#BF5AF2]/30" :
                         "bg-[var(--c-accent)]/10 ring-2 ring-[var(--c-accent)]/30"
                       }`}>
@@ -658,7 +934,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Green Tea Options */}
-            <div className="rounded-[16px] border border-[#30D158]/30 bg-[#30D158]/5 p-4 md:p-6">
+            <div className="rounded-[16px] border border-[#30D158]/40 bg-[#30D158]/12 p-4 md:p-6">
               <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">ช่วงเวลาแห่งชาเขียว (12:00-13:00)</p>
               <p className="text-[13px] text-[var(--c-text-2)] mb-4">เดินย่อยหลังกิน Gyukatsu ไปร้านชาเขียวใกล้ๆ วัด</p>
               <div className="space-y-2.5">
@@ -667,7 +943,7 @@ export default async function TokyoDayPage({
                   { name: "Kaminari Issa", tag: "เครื่องดื่ม/เครป", desc: "Latte ชาเขียวและขนมอร่อย นั่งสบายกว่า", icon: "☕", mapQuery: "Kaminari+Issa+Asakusa" },
                   { name: "Hatoya Asakusa", tag: "ชาแบบดั้งเดิม", desc: "ชาร้อนบรรยากาศญี่ปุ่นแท้ ~220 บาท", icon: "🍵", mapQuery: "Hatoya+Asakusa" },
                 ].map((r) => (
-                  <div key={r.name} className="rounded-[12px] border border-[#30D158]/25 bg-[#30D158]/5 p-4">
+                  <div key={r.name} className="rounded-[12px] border border-[#30D158]/25 bg-[#30D158]/12 p-4">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-[16px]">{r.icon}</span>
                       <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
@@ -717,8 +993,8 @@ export default async function TokyoDayPage({
               <div className="space-y-2.5">
                 {[
                   { floor: "ชั้น 6", who: "พ่อ & ลูก", color: "bg-[#BF5AF2]/10 text-[#BF5AF2] border-[#BF5AF2]/30", items: "Jump Shop / Nintendo / Pokemon Center" },
-                  { floor: "ชั้น 2", who: "พ่อ", color: "bg-[#64D2FF]/10 text-[#64D2FF] border-[#64D2FF]/30", items: "Porter Exchange — ดูเป้ EDC" },
-                  { floor: "ชั้น B1", who: "ทุกคน", color: "bg-[#FF9F0A]/10 text-[#FF9F0A] border-[#FF9F0A]/30", items: "Kiwamiya (แฮมเบิร์กหินร้อน) / Saryo Suisen (อุด้ง + มัทฉะ)" },
+                  { floor: "ชั้น 2", who: "พ่อ", color: "bg-[#64D2FF]/18 text-[#64D2FF] border-[#64D2FF]/40", items: "Porter Exchange — ดูเป้ EDC" },
+                  { floor: "ชั้น B1", who: "ทุกคน", color: "bg-[#FF9F0A]/18 text-[#FF9F0A] border-[#FF9F0A]/40", items: "Kiwamiya (แฮมเบิร์กหินร้อน) / Saryo Suisen (อุด้ง + มัทฉะ)" },
                 ].map((f) => (
                   <div key={f.floor} className={`rounded-[12px] border ${f.color} p-4`}>
                     <div className="flex items-center gap-3 mb-1.5">
@@ -741,11 +1017,11 @@ export default async function TokyoDayPage({
                   { name: "Kiwamiya (Parco ชั้น B1)", desc: "แฮมเบิร์กเนื้อย่างบนหินร้อน เนื้อหวานฉ่ำ ย่างเองสนุก! (คิวอาจยาว)", icon: "🥩", tag: "", mapQuery: "Kiwamiya+Shibuya+Parco" },
                   { name: "Saryo Suisen (Parco ชั้น B1)", desc: "อุด้งเส้นสดนุ่ม + มองบลังค์มัทฉะเข้มข้น — เหมาะครอบครัว", icon: "🍜", tag: "", mapQuery: "Saryo+Suisen+Shibuya+Parco" },
                 ].map((r) => (
-                  <div key={r.name} className={`rounded-[12px] border p-4 ${r.tag ? "border-[#FF9F0A]/30 bg-[#FF9F0A]/5" : "border-[var(--c-sep)] bg-[var(--c-subtle-card)]"}`}>
+                  <div key={r.name} className={`rounded-[12px] border p-4 ${r.tag ? "border-[#FF9F0A]/40 bg-[#FF9F0A]/12" : "border-[var(--c-sep)] bg-[var(--c-subtle-card)]"}`}>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-[16px]">{r.icon}</span>
                       <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
-                      {r.tag && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">{r.tag}</span>}
+                      {r.tag && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/22 text-[#FF9F0A]">{r.tag}</span>}
                     </div>
                     <p className="text-[13px] text-[var(--c-text-2)]">{r.desc}</p>
                     <a href={`https://www.google.com/maps/search/?api=1&query=${r.mapQuery}`} target="_blank" rel="noopener noreferrer"
@@ -783,7 +1059,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Tips */}
-            <div className="rounded-[16px] border border-[#30D158]/30 bg-[#30D158]/5 p-5">
+            <div className="rounded-[16px] border border-[#30D158]/40 bg-[#30D158]/12 p-5">
               <p className="text-[16px] font-semibold text-[#30D158] mb-3">ทริค Day 4</p>
               <div className="space-y-2.5">
                 {[
@@ -803,7 +1079,7 @@ export default async function TokyoDayPage({
         ) : dayNumber === 5 ? (
           <div className="space-y-5">
             {/* Header */}
-            <div className="rounded-[18px] border border-[#30D158]/40 bg-[#30D158]/5 p-5 md:p-7">
+            <div className="rounded-[18px] border border-[#30D158]/40 bg-[#30D158]/12 p-5 md:p-7">
               <p className="text-[24px] md:text-[34px] font-bold text-[var(--c-text)] leading-tight">Day 5: Kamakura</p>
               <p className="text-[14px] mt-2 text-[var(--c-text-2)]">วันพฤหัสบดี 5 มีนาคม 2026 — ตามรอยซีรีส์ &middot; ไข่ฟูฟ่อง &middot; พระใหญ่ &middot; ถนนขนม</p>
               <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -844,9 +1120,9 @@ export default async function TokyoDayPage({
                     <div className="flex flex-col items-center">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0 ${
                         row.phase === "series" ? "bg-[#BF5AF2]/10 ring-2 ring-[#BF5AF2]/30" :
-                        row.phase === "food" ? "bg-[#FF9F0A]/10 ring-2 ring-[#FF9F0A]/30" :
-                        row.phase === "temple" ? "bg-[#30D158]/10 ring-2 ring-[#30D158]/30" :
-                        row.phase === "shopping" ? "bg-[#FF6482]/10 ring-2 ring-[#FF6482]/30" :
+                        row.phase === "food" ? "bg-[#FF9F0A]/18 ring-2 ring-[#FF9F0A]/30" :
+                        row.phase === "temple" ? "bg-[#30D158]/18 ring-2 ring-[#30D158]/30" :
+                        row.phase === "shopping" ? "bg-[#FF6482]/18 ring-2 ring-[#FF6482]/30" :
                         "bg-[var(--c-accent)]/10 ring-2 ring-[var(--c-accent)]/30"
                       }`}>
                         {row.icon}
@@ -871,10 +1147,10 @@ export default async function TokyoDayPage({
                           "text-[var(--c-accent)]"
                         }`}>{row.time}</span>
                         {row.phase === "series" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#BF5AF2]/15 text-[#BF5AF2]">ตามรอยซีรีส์</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#BF5AF2]/22 text-[#BF5AF2]">ตามรอยซีรีส์</span>
                         )}
                         {row.phase === "food" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">อาหาร</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/22 text-[#FF9F0A]">อาหาร</span>
                         )}
                       </div>
                       <p className="text-[16px] font-semibold text-[var(--c-text)] mt-1 leading-tight">{row.title}</p>
@@ -893,7 +1169,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Series Locations */}
-            <div className="rounded-[16px] border border-[#BF5AF2]/30 bg-[#BF5AF2]/5 p-4 md:p-6">
+            <div className="rounded-[16px] border border-[#BF5AF2]/30 bg-[#BF5AF2]/12 p-4 md:p-6">
               <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">จุดตามรอยซีรีส์ที่ Hase (10:45-12:10)</p>
               <p className="text-[13px] text-[var(--c-text-2)] mb-4">ใกล้สถานี Hase มาก เดินถ่ายรูปช้าๆ ฆ่าเวลาได้พอดีเป๊ะ</p>
               <div className="space-y-2.5">
@@ -901,7 +1177,7 @@ export default async function TokyoDayPage({
                   { name: "Goryo Shrine (ศาลเจ้าโกเรียว)", desc: "ศาลเจ้าที่มีรถไฟวิ่งผ่านหน้าประตู — Unseen สุดๆ! จุดถ่ายรูปยอดฮิต", icon: "⛩️", mapQuery: "Goryo+Shrine+Kamakura" },
                   { name: "Tanaka Barber Shop", desc: "ร้านตัดผมฉากสำคัญ อยู่ติดกับศาลเจ้าเลย", icon: "💈", mapQuery: "Tanaka+Barber+Shop+Hase+Kamakura" },
                 ].map((r) => (
-                  <div key={r.name} className="rounded-[12px] border border-[#BF5AF2]/25 bg-[#BF5AF2]/5 p-4">
+                  <div key={r.name} className="rounded-[12px] border border-[#BF5AF2]/35 bg-[#BF5AF2]/12 p-4">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-[16px]">{r.icon}</span>
                       <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
@@ -918,7 +1194,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Komachi-dori Snacks */}
-            <div className="rounded-[16px] border border-[#FF6482]/30 bg-[#FF6482]/5 p-4 md:p-6">
+            <div className="rounded-[16px] border border-[#FF6482]/40 bg-[#FF6482]/5 p-4 md:p-6">
               <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">ถนน Komachi-dori — ตามล่าของหวาน (15:00-17:00)</p>
               <p className="text-[13px] text-[var(--c-text-2)] mb-4">เดินจากสถานี Kamakura เข้าถนนช้อปปิ้ง+ขนมเลย!</p>
               <div className="space-y-2.5">
@@ -970,7 +1246,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Tips */}
-            <div className="rounded-[16px] border border-[#30D158]/30 bg-[#30D158]/5 p-5">
+            <div className="rounded-[16px] border border-[#30D158]/40 bg-[#30D158]/12 p-5">
               <p className="text-[16px] font-semibold text-[#30D158] mb-3">ทริค Day 5</p>
               <div className="space-y-2.5">
                 {[
@@ -1031,8 +1307,8 @@ export default async function TokyoDayPage({
                   <div key={`${row.time}-${row.title}`} className="flex gap-4">
                     <div className="flex flex-col items-center">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0 ${
-                        row.phase === "fuji" ? "bg-[#64D2FF]/10 ring-2 ring-[#64D2FF]/30" :
-                        row.phase === "food" ? "bg-[#FF9F0A]/10 ring-2 ring-[#FF9F0A]/30" :
+                        row.phase === "fuji" ? "bg-[#64D2FF]/18 ring-2 ring-[#64D2FF]/30" :
+                        row.phase === "food" ? "bg-[#FF9F0A]/18 ring-2 ring-[#FF9F0A]/30" :
                         "bg-[var(--c-accent)]/10 ring-2 ring-[var(--c-accent)]/30"
                       }`}>
                         {row.icon}
@@ -1053,7 +1329,7 @@ export default async function TokyoDayPage({
                           "text-[var(--c-accent)]"
                         }`}>{row.time}</span>
                         {row.phase === "food" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">อาหาร</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/22 text-[#FF9F0A]">อาหาร</span>
                         )}
                       </div>
                       <p className="text-[16px] font-semibold text-[var(--c-text)] mt-1 leading-tight">{row.title}</p>
@@ -1072,7 +1348,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Ropeway Details */}
-            <div className="rounded-[16px] border border-[#64D2FF]/30 bg-[#64D2FF]/5 p-4 md:p-6">
+            <div className="rounded-[16px] border border-[#64D2FF]/40 bg-[#64D2FF]/5 p-4 md:p-6">
               <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">Kachi Kachi Ropeway — กระเช้าชมวิว</p>
               <p className="text-[13px] text-[var(--c-text-2)] mb-4">ขึ้นกระเช้าดูวิวพาโนรามาฟูจิ + ของกิน</p>
               <div className="space-y-2.5">
@@ -1091,7 +1367,7 @@ export default async function TokyoDayPage({
                   </div>
                 ))}
               </div>
-              <div className="rounded-[10px] bg-[#FF453A]/10 border border-[#FF453A]/25 px-3.5 py-2.5 mt-3">
+              <div className="rounded-[10px] bg-[#FF453A]/18 border border-[#FF453A]/35 px-3.5 py-2.5 mt-3">
                 <p className="text-[13px] text-[#FF453A] font-medium">แผนสำรอง: ถ้าคิวรอกระเช้ายาวเกิน 40 นาที &rarr; ตัดออก! ข้ามไป Oishi Park เลย</p>
               </div>
             </div>
@@ -1102,7 +1378,7 @@ export default async function TokyoDayPage({
               <p className="text-[13px] text-[var(--c-text-2)] mb-4">เรียงตามความสะดวกเส้นทาง</p>
               <div className="space-y-2.5">
                 {[
-                  { rank: "1", name: "Koubaiya (สาขา Oishi Park)", desc: "ตั้งอยู่ที่ Oishi Park ป้ายรถเมล์ No.20 จุดหมายต่อไปของเราพอดี! นั่ง Red Line จากกระเช้า (ป้าย 9) ยิงยาวมาลงทีเดียว", icon: "🥇", mapQuery: "Koubaiya+Oishi+Park+Kawaguchiko", color: "border-[#FF9F0A]/30 bg-[#FF9F0A]/5" },
+                  { rank: "1", name: "Koubaiya (สาขา Oishi Park)", desc: "ตั้งอยู่ที่ Oishi Park ป้ายรถเมล์ No.20 จุดหมายต่อไปของเราพอดี! นั่ง Red Line จากกระเช้า (ป้าย 9) ยิงยาวมาลงทีเดียว", icon: "🥇", mapQuery: "Koubaiya+Oishi+Park+Kawaguchiko", color: "border-[#FF9F0A]/40 bg-[#FF9F0A]/12" },
                   { rank: "2", name: "Momijitei (โมมิจิเท)", desc: "อยู่ป้าย No.19 ก่อนถึง Oishi Park แค่ป้ายเดียว ทานเสร็จเดินไป Oishi Park ได้ (500-600 ม.)", icon: "🥈", mapQuery: "Momijitei+Kawaguchiko", color: "border-[var(--c-sep)] bg-[var(--c-subtle-card)]" },
                   { rank: "3", name: "Houtou Fudou (โดมขาว)", desc: "ดังโฮโตหม้อร้อน อยู่ป้าย No.17 ใกล้กระเช้าสุด แต่ทานเสร็จต้องรอรถบัสอีกรอบไป Oishi Park", icon: "🥉", mapQuery: "Houtou+Fudou+Kawaguchiko", color: "border-[var(--c-sep)] bg-[var(--c-subtle-card)]" },
                 ].map((r) => (
@@ -1132,11 +1408,11 @@ export default async function TokyoDayPage({
                   { name: "Houtou Fudou (สาขาหน้าสถานี)", desc: "ร้านสีขาว ดังโฮโตหม้อร้อน (ถ้ายังไม่ได้ทานตอนเที่ยง)", icon: "🍲", tag: "", mapQuery: "Houtou+Fudou+Kawaguchiko+Station" },
                   { name: "Hirai", desc: "ร้านที่มีกุ้งเทมปุระยักษ์!", icon: "🦐", tag: "", mapQuery: "Hirai+Kawaguchiko" },
                 ].map((r) => (
-                  <div key={r.name} className={`rounded-[12px] border p-4 ${r.tag ? "border-[#FF9F0A]/30 bg-[#FF9F0A]/5" : "border-[var(--c-sep)] bg-[var(--c-subtle-card)]"}`}>
+                  <div key={r.name} className={`rounded-[12px] border p-4 ${r.tag ? "border-[#FF9F0A]/40 bg-[#FF9F0A]/12" : "border-[var(--c-sep)] bg-[var(--c-subtle-card)]"}`}>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-[16px]">{r.icon}</span>
                       <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
-                      {r.tag && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">{r.tag}</span>}
+                      {r.tag && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/22 text-[#FF9F0A]">{r.tag}</span>}
                     </div>
                     <p className="text-[13px] text-[var(--c-text-2)]">{r.desc}</p>
                     <a href={`https://www.google.com/maps/search/?api=1&query=${r.mapQuery}`} target="_blank" rel="noopener noreferrer"
@@ -1176,7 +1452,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Checklist */}
-            <div className="rounded-[16px] border border-[#FF453A]/30 bg-[#FF453A]/5 p-4 md:p-6">
+            <div className="rounded-[16px] border border-[#FF453A]/40 bg-[#FF453A]/5 p-4 md:p-6">
               <p className="text-[16px] font-semibold text-[#FF453A] mb-3">Checklist วันนี้</p>
               <div className="space-y-2.5">
                 {[
@@ -1193,7 +1469,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Tips */}
-            <div className="rounded-[16px] border border-[#30D158]/30 bg-[#30D158]/5 p-5">
+            <div className="rounded-[16px] border border-[#30D158]/40 bg-[#30D158]/12 p-5">
               <p className="text-[16px] font-semibold text-[#30D158] mb-3">ทริค Day 6</p>
               <div className="space-y-2.5">
                 {[
@@ -1214,7 +1490,7 @@ export default async function TokyoDayPage({
         ) : dayNumber === 7 ? (
           <div className="space-y-5">
             {/* Header */}
-            <div className="rounded-[18px] border border-[#FF9F0A]/40 bg-[#FF9F0A]/5 p-5 md:p-7">
+            <div className="rounded-[18px] border border-[#FF9F0A]/40 bg-[#FF9F0A]/12 p-5 md:p-7">
               <p className="text-[24px] md:text-[34px] font-bold text-[var(--c-text)] leading-tight">Day 7: Kawagoe &amp; Ginza</p>
               <p className="text-[14px] mt-2 text-[var(--c-text-2)]">วันเสาร์ 7 มีนาคม 2026 — เมืองเก่า Little Edo &middot; Ginza ถนนปิด &middot; Tokyo Station ส่งท้าย</p>
               <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1254,10 +1530,10 @@ export default async function TokyoDayPage({
                   <div key={`${row.time}-${row.title}`} className="flex gap-4">
                     <div className="flex flex-col items-center">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[18px] shrink-0 ${
-                        row.phase === "kawagoe" ? "bg-[#FF9F0A]/10 ring-2 ring-[#FF9F0A]/30" :
+                        row.phase === "kawagoe" ? "bg-[#FF9F0A]/18 ring-2 ring-[#FF9F0A]/30" :
                         row.phase === "ginza" ? "bg-[#BF5AF2]/10 ring-2 ring-[#BF5AF2]/30" :
-                        row.phase === "tokyo" ? "bg-[#FF453A]/10 ring-2 ring-[#FF453A]/30" :
-                        row.phase === "food" ? "bg-[#FF6482]/10 ring-2 ring-[#FF6482]/30" :
+                        row.phase === "tokyo" ? "bg-[#FF453A]/18 ring-2 ring-[#FF453A]/30" :
+                        row.phase === "food" ? "bg-[#FF6482]/18 ring-2 ring-[#FF6482]/30" :
                         "bg-[var(--c-accent)]/10 ring-2 ring-[var(--c-accent)]/30"
                       }`}>
                         {row.icon}
@@ -1282,10 +1558,10 @@ export default async function TokyoDayPage({
                           "text-[var(--c-accent)]"
                         }`}>{row.time}</span>
                         {row.phase === "kawagoe" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">Kawagoe</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/22 text-[#FF9F0A]">Kawagoe</span>
                         )}
                         {row.phase === "ginza" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#BF5AF2]/15 text-[#BF5AF2]">Ginza</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#BF5AF2]/22 text-[#BF5AF2]">Ginza</span>
                         )}
                         {row.phase === "tokyo" && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF453A]/15 text-[#FF453A]">Tokyo Sta.</span>
@@ -1310,7 +1586,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Kawagoe Snacks */}
-            <div className="rounded-[16px] border border-[#FF9F0A]/30 bg-[#FF9F0A]/5 p-4 md:p-6">
+            <div className="rounded-[16px] border border-[#FF9F0A]/40 bg-[#FF9F0A]/12 p-4 md:p-6">
               <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">ของกิน Kawagoe — ตามล่ามันหวาน!</p>
               <p className="text-[13px] text-[var(--c-text-2)] mb-4">Kawagoe ขึ้นชื่อเรื่องมันหวาน (Sweet Potato) ทุกร้านมีเมนูมันหวาน!</p>
               <div className="space-y-2.5">
@@ -1319,11 +1595,11 @@ export default async function TokyoDayPage({
                   { name: "Candy Alley (Kashiya Yokocho)", desc: "ซอยขนมโบราณ! ซื้อขนมแท่งยาว Fugashi ที่ร้าน Matsuriku", icon: "🍭", tag: "", mapQuery: "Kashiya+Yokocho+Candy+Alley+Kawagoe" },
                   { name: "Kawagoe Pudding", desc: "พุดดิ้งมันหวาน ซื้อกลับบ้านเป็นของฝากได้!", icon: "🍮", tag: "", mapQuery: "Kawagoe+Pudding" },
                 ].map((r) => (
-                  <div key={r.name} className={`rounded-[12px] border p-4 ${r.tag ? "border-[#FF9F0A]/30 bg-[#FF9F0A]/5" : "border-[var(--c-sep)] bg-[var(--c-subtle-card)]"}`}>
+                  <div key={r.name} className={`rounded-[12px] border p-4 ${r.tag ? "border-[#FF9F0A]/40 bg-[#FF9F0A]/12" : "border-[var(--c-sep)] bg-[var(--c-subtle-card)]"}`}>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-[16px]">{r.icon}</span>
                       <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
-                      {r.tag && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/15 text-[#FF9F0A]">{r.tag}</span>}
+                      {r.tag && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF9F0A]/22 text-[#FF9F0A]">{r.tag}</span>}
                     </div>
                     <p className="text-[13px] text-[var(--c-text-2)]">{r.desc}</p>
                     <a href={`https://www.google.com/maps/search/?api=1&query=${r.mapQuery}`} target="_blank" rel="noopener noreferrer"
@@ -1337,7 +1613,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Ginza Spots */}
-            <div className="rounded-[16px] border border-[#BF5AF2]/30 bg-[#BF5AF2]/5 p-4 md:p-6">
+            <div className="rounded-[16px] border border-[#BF5AF2]/30 bg-[#BF5AF2]/12 p-4 md:p-6">
               <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">Ginza Pedestrian Paradise (14:30-16:15)</p>
               <p className="text-[13px] text-[var(--c-text-2)] mb-4">ทุกวันเสาร์ถนน Chuo-dori ปิด! เดินถ่ายรูปกลางถนนได้</p>
               <div className="space-y-2.5">
@@ -1346,7 +1622,7 @@ export default async function TokyoDayPage({
                   { name: "Senchado Tokyo", desc: "ร้านชาเขียวคุณภาพดี ตาม List แม่", icon: "🍵", mapQuery: "Senchado+Tokyo+Ginza" },
                   { name: "Itoya (ตึกแดง)", desc: "ร้านเครื่องเขียนตำนานของ Ginza! ปากกา กระดาษ เครื่องเขียนสวยๆ ครบทุกชั้น", icon: "✏️", mapQuery: "Itoya+Ginza" },
                 ].map((r) => (
-                  <div key={r.name} className="rounded-[12px] border border-[#BF5AF2]/25 bg-[#BF5AF2]/5 p-4">
+                  <div key={r.name} className="rounded-[12px] border border-[#BF5AF2]/35 bg-[#BF5AF2]/12 p-4">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-[16px]">{r.icon}</span>
                       <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
@@ -1363,7 +1639,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Tokyo Station */}
-            <div className="rounded-[16px] border border-[#FF453A]/30 bg-[#FF453A]/5 p-4 md:p-6">
+            <div className="rounded-[16px] border border-[#FF453A]/40 bg-[#FF453A]/5 p-4 md:p-6">
               <p className="text-[20px] font-semibold text-[var(--c-text)] mb-1">Tokyo Station — ส่งท้ายทริป (16:30-19:30)</p>
               <p className="text-[13px] text-[var(--c-text-2)] mb-4">First Avenue ชั้น B1 ฝั่ง Yaesu — สวรรค์ของเล่น + ราเมน</p>
               <div className="space-y-2.5">
@@ -1378,7 +1654,7 @@ export default async function TokyoDayPage({
                       <span className="text-[16px]">{r.icon}</span>
                       <span className="text-[14px] font-semibold text-[var(--c-text)]">{r.name}</span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        r.tag === "มื้อเย็น" ? "bg-[#FF9F0A]/15 text-[#FF9F0A]" : "bg-[#FF453A]/15 text-[#FF453A]"
+                        r.tag === "มื้อเย็น" ? "bg-[#FF9F0A]/22 text-[#FF9F0A]" : "bg-[#FF453A]/15 text-[#FF453A]"
                       }`}>{r.tag}</span>
                     </div>
                     <p className="text-[13px] text-[var(--c-text-2)]">{r.desc}</p>
@@ -1415,7 +1691,7 @@ export default async function TokyoDayPage({
             </div>
 
             {/* Tips */}
-            <div className="rounded-[16px] border border-[#30D158]/30 bg-[#30D158]/5 p-5">
+            <div className="rounded-[16px] border border-[#30D158]/40 bg-[#30D158]/12 p-5">
               <p className="text-[16px] font-semibold text-[#30D158] mb-3">ทริค Day 7</p>
               <div className="space-y-2.5">
                 {[
@@ -1440,6 +1716,12 @@ export default async function TokyoDayPage({
           </div>
         )}
         </div>
+        </div>
+        <div className="lang-jp">
+          <TokyoDayJP dayNumber={dayNumber} />
+        </div>
+        </TokyoLangWrap>
+        </TokyoZoomWrap>
       </div>
     </MainNavigationShell>
   );

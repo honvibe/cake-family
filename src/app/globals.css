@@ -1,28 +1,5 @@
 @import "tailwindcss";
 
-/* LINE Seed Sans TH — from lazywasabi/thai-web-fonts CDN */
-@font-face {
-  font-family: 'LINE Seed Sans TH';
-  src: url('https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'LINE Seed Sans TH';
-  src: url('https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH-Bold.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'LINE Seed Sans TH';
-  src: url('https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH-ExtraBold.woff2') format('woff2');
-  font-weight: 800;
-  font-style: normal;
-  font-display: swap;
-}
-
 /* ─── Semantic Color Tokens ─── */
 /* Dark mode = default (prevents FOUC since JS adds .dark on load) */
 :root {
@@ -32,16 +9,17 @@
   --c-input: rgba(120, 120, 128, 0.12);
   --c-text: #1C1C1E;
   --c-text-2: rgba(60, 60, 67, 0.6);
-  --c-text-3: rgba(60, 60, 67, 0.3);
-  --c-text-4: rgba(60, 60, 67, 0.18);
-  --c-sep: rgba(60, 60, 67, 0.29);
+  --c-text-3: rgba(60, 60, 67, 0.4);
+  --c-text-4: rgba(60, 60, 67, 0.22);
+  --c-sep: rgba(60, 60, 67, 0.36);
   --c-fill: rgba(120, 120, 128, 0.2);
   --c-fill-2: rgba(120, 120, 128, 0.16);
   --c-fill-3: rgba(120, 120, 128, 0.08);
   --c-glass: rgba(255, 255, 255, 0.82);
   --c-overlay: rgba(0, 0, 0, 0.3);
-  --c-accent: #996B2F;
-  --c-accent-bg: rgba(153, 107, 47, 0.12);
+  --c-accent: #C05621;
+  --c-accent-bg: rgba(192, 86, 33, 0.15);
+  --c-star: #D97706;
   --c-subtle-card: rgba(0, 0, 0, 0.03);
 
   --safe-top: env(safe-area-inset-top, 0px);
@@ -67,18 +45,24 @@ html.dark {
   --c-overlay: rgba(0, 0, 0, 0.5);
   --c-accent: #D4A05A;
   --c-accent-bg: rgba(212, 160, 90, 0.15);
+  --c-star: #EAB308;
   --c-subtle-card: rgba(255, 255, 255, 0.03);
 }
 
 @theme inline {
   --color-background: var(--c-bg);
   --color-foreground: var(--c-text);
+  --font-sans: var(--font-ibm-body), system-ui, sans-serif;
+  --font-heading: var(--font-ibm-heading), system-ui, sans-serif;
 }
 
 body {
   background: var(--c-bg);
   color: var(--c-text);
-  font-family: 'LINE Seed Sans TH', -apple-system, BlinkMacSystemFont, system-ui, 'Helvetica Neue', sans-serif;
+  font-family: var(--font-ibm-body), system-ui, sans-serif;
+  font-weight: 400;
+  line-height: 1.75;
+  letter-spacing: 0.01em;
   padding-top: var(--safe-top);
   padding-bottom: var(--safe-bottom);
   padding-left: var(--safe-left);
@@ -88,6 +72,19 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Headings: IBM Plex Sans Thai */
+h1, h2, h3, h4 {
+  font-family: var(--font-ibm-heading), system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+/* Body text */
+p, li, td, span, label, a {
+  font-weight: 400;
 }
 
 /* Apple HIG: 44pt minimum touch targets on mobile */
@@ -100,4 +97,47 @@ body {
   input, textarea {
     font-size: 16px;
   }
+}
+
+/* ─── Print Styles (A4) ─── */
+@media print {
+  @page { size: A4; margin: 14mm 12mm; }
+  *, *::before, *::after {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+  html, body {
+    background: white !important;
+    color: #1C1C1E !important;
+    font-size: 11pt !important;
+  }
+  /* Force light theme for print */
+  :root, html.dark {
+    --c-bg: #FFFFFF;
+    --c-card: #FFFFFF;
+    --c-card-alt: #F5F5F7;
+    --c-text: #1C1C1E;
+    --c-text-2: #6B6B6F;
+    --c-text-3: #8E8E93;
+    --c-sep: #D1D1D6;
+    --c-fill: #E5E5EA;
+    --c-fill-2: #EBEBF0;
+    --c-fill-3: #F2F2F7;
+    --c-glass: #FFFFFF;
+    --c-accent: #C05621;
+    --c-accent-bg: rgba(192, 86, 33, 0.08);
+    --c-star: #D97706;
+    --c-subtle-card: #F9F9FB;
+  }
+  /* Hide nav chrome */
+  header.sticky, aside { display: none !important; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  /* Layout fix */
+  main { padding: 0 !important; }
+  .min-h-screen { min-height: auto !important; background: white !important; }
+  /* Page break control */
+  .print-break-avoid { break-inside: avoid; }
+  /* Links show as text */
+  a { text-decoration: none !important; }
 }

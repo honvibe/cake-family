@@ -9,9 +9,11 @@ type ThemeMode = "dark" | "light";
 
 const NAV_ITEMS = [
   { href: "/driver", label: "Driver", icon: "🚗", sub: "" },
+  { href: "/drive-info", label: "Drive Info", icon: "💾", sub: "" },
   { href: "/price-tracker", label: "Price Tracker", icon: "🏷️", sub: "" },
   { href: "/travel/tokyo2026", label: "Tokyo 2026", icon: "✈️", sub: "Travel" },
   { href: "/watchlist", label: "Watchlist", icon: "🎬", sub: "" },
+  { href: "/expense", label: "Expense", icon: "💰", sub: "Japan Trip" },
 ];
 
 export default function MainNavigationShell({
@@ -94,12 +96,12 @@ export default function MainNavigationShell({
       </header>
 
       {sidebarOpen && (
-        <div className="fixed inset-0 z-30 md:hidden" onClick={() => setSidebarOpen(false)}>
+        <div className="fixed inset-0 z-30" onClick={() => setSidebarOpen(false)}>
           <div className="absolute inset-0 bg-[var(--c-overlay)] backdrop-blur-sm" />
         </div>
       )}
 
-      <aside className={`fixed top-11 md:top-12 left-0 z-30 h-[calc(100vh-44px)] md:h-[calc(100vh-48px)] w-[270px] bg-[var(--c-card)]/95 backdrop-blur-xl border-r border-[var(--c-sep)] transition-transform duration-300 ease-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
+      <aside className={`fixed top-11 md:top-12 left-0 z-30 h-[calc(100vh-44px)] md:h-[calc(100vh-48px)] w-[270px] bg-[var(--c-card)]/95 backdrop-blur-xl border-r border-[var(--c-sep)] transition-transform duration-300 ease-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="h-full flex flex-col">
           <nav className="p-2.5 pt-3 space-y-0.5">
             {NAV_ITEMS.map((item) => {
@@ -128,7 +130,7 @@ export default function MainNavigationShell({
         </div>
       </aside>
 
-      <main className="px-4 py-5 md:px-8 md:py-6 md:pl-[302px]">{children}</main>
+      <main className="px-4 py-5 md:px-8 md:py-6">{children}</main>
     </div>
   );
 }
