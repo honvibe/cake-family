@@ -4,7 +4,7 @@ import MainNavigationShell from "@/components/main-navigation-shell";
 import { useEffect, useState, useCallback, useRef } from "react";
 
 // ─── Types ───
-type Person = "Hon" | "Jay";
+type Person = "Hon" | "Jay" | "Nee";
 type ExpenseType = "personal" | "shared";
 
 interface ExpenseEntry {
@@ -28,6 +28,7 @@ interface CashTopup {
 interface CashPool {
   hon: number;         // Hon's initial cash (default 40000)
   jay: number;         // Jay's initial cash (default 40000)
+  nee: number;         // Nee's initial cash (default 0)
   topups: CashTopup[];
 }
 
@@ -54,16 +55,20 @@ const DEFAULT_SOURCES: PaymentSource[] = [
   { id: "kbank-line-hon", label: "Kbank LINE (Hon)", owner: "Hon", type: "credit" },
   { id: "scb-jay", label: "SCB Planet (Jay)", owner: "Jay", type: "credit" },
   { id: "youtrip-jay", label: "Youtrip (Jay)", owner: "Jay", type: "credit" },
+  { id: "scb-nee", label: "SCB Planet (Nee)", owner: "Nee", type: "credit" },
+  { id: "cash-nee", label: "เงินสด (Nee)", owner: "Nee", type: "cash" },
 ];
 
 const PERSON_COLORS: Record<Person, string> = {
   Hon: "#3B82F6",
   Jay: "#EC4899",
+  Nee: "#10B981",
 };
 
 const PERSON_BG: Record<Person, string> = {
   Hon: "rgba(59,130,246,0.15)",
   Jay: "rgba(236,72,153,0.15)",
+  Nee: "rgba(16,185,129,0.15)",
 };
 
 type TabId = "record" | "transactions" | "summary";
@@ -133,7 +138,7 @@ function compressImage(file: File, maxW = 800, quality = 0.6): Promise<string> {
 function emptyData(): ExpenseData {
   return {
     entries: [],
-    cashPool: { hon: 40000, jay: 40000, topups: [] },
+    cashPool: { hon: 40000, jay: 40000, nee: 0, topups: [] },
     sources: [...DEFAULT_SOURCES],
     exchangeRate: 0.27,
   };
@@ -196,7 +201,7 @@ export default function ExpensePage() {
           }
           setData({
             entries: d.entries || [],
-            cashPool: cashPool || { hon: 40000, jay: 40000, topups: [] },
+            cashPool: { hon: 40000, jay: 40000, nee: 0, topups: [], ...(cashPool || {}) },
             sources: [...DEFAULT_SOURCES],
             exchangeRate: d.exchangeRate ?? 0.27,
           });
@@ -289,13 +294,17 @@ export default function ExpensePage() {
   }
   const honCashInitial = data.cashPool.hon;
   const jayCashInitial = data.cashPool.jay;
+  const neeCashInitial = data.cashPool.nee ?? 0;
   const honCashUsed = cashUsedBy("Hon");
   const jayCashUsed = cashUsedBy("Jay");
+  const neeCashUsed = cashUsedBy("Nee");
   const honCashTopup = cashTopupsBy("Hon");
   const jayCashTopup = cashTopupsBy("Jay");
+  const neeCashTopup = cashTopupsBy("Nee");
   const honCashRemaining = honCashInitial + honCashTopup - honCashUsed;
   const jayCashRemaining = jayCashInitial + jayCashTopup - jayCashUsed;
-  const totalCashRemaining = honCashRemaining + jayCashRemaining;
+  const neeCashRemaining = neeCashInitial + neeCashTopup - neeCashUsed;
+  const totalCashRemaining = honCashRemaining + jayCashRemaining + neeCashRemaining;
 
   // ─── Summary calculations ───
   const totalAll = data.entries.reduce((sum, e) => sum + e.amount, 0);
@@ -329,24 +338,25 @@ export default function ExpensePage() {
     });
   }
 
-  // Settlement: shared ทั้งหมดหาร 2, ดูใครจ่ายไปเกิน
+  // Settlement: shared ทั้งหมดหาร 3, ดูใครจ่ายไปเกิน
   function settlement() {
+    const people: Person[] = ["Hon", "Jay", "Nee"];
     const totalShared = data.entries
       .filter((e) => e.type === "shared")
       .reduce((sum, e) => sum + e.amount, 0);
-    const eachShare = totalShared / 2;
+    const eachShare = totalShared / people.length;
 
-    const honSharedPaid = data.entries
-      .filter((e) => e.type === "shared" && e.paidBy === "Hon")
-      .reduce((sum, e) => sum + e.amount, 0);
-    const jaySharedPaid = data.entries
-      .filter((e) => e.type === "shared" && e.paidBy === "Jay")
-      .reduce((sum, e) => sum + e.amount, 0);
+    const paidBy: Record<Person, number> = { Hon: 0, Jay: 0, Nee: 0 };
+    for (const e of data.entries) {
+      if (e.type === "shared") paidBy[e.paidBy] += e.amount;
+    }
 
-    const honOwes = eachShare - honSharedPaid;
-    const jayOwes = eachShare - jaySharedPaid;
+    const owes: Record<Person, number> = { Hon: 0, Jay: 0, Nee: 0 };
+    for (const p of people) {
+      owes[p] = eachShare - paidBy[p]; // positive = ต้องจ่ายเพิ่ม, negative = จ่ายเกิน
+    }
 
-    return { totalShared, eachShare, honSharedPaid, jaySharedPaid, honOwes, jayOwes };
+    return { totalShared, eachShare, paidBy, owes, people };
   }
 
   // ─── Source label helper ───
@@ -485,7 +495,7 @@ export default function ExpensePage() {
           <div>
             <label className="block text-[13px] text-[var(--c-text-2)] mb-1.5">ใครจ่าย</label>
             <div className="flex gap-3">
-              {(["Hon", "Jay"] as Person[]).map((p) => (
+              {(["Hon", "Jay", "Nee"] as Person[]).map((p) => (
                 <button
                   key={p}
                   onClick={() => {
@@ -716,12 +726,12 @@ export default function ExpensePage() {
             </div>
 
             {/* Per person breakdown */}
-            <div className="grid grid-cols-2 gap-3">
-              {(["Hon", "Jay"] as Person[]).map((p) => {
-                const initial = p === "Hon" ? honCashInitial : jayCashInitial;
-                const used = p === "Hon" ? honCashUsed : jayCashUsed;
-                const topup = p === "Hon" ? honCashTopup : jayCashTopup;
-                const remaining = p === "Hon" ? honCashRemaining : jayCashRemaining;
+            <div className="grid grid-cols-3 gap-2">
+              {(["Hon", "Jay", "Nee"] as Person[]).map((p) => {
+                const initial = p === "Hon" ? honCashInitial : p === "Jay" ? jayCashInitial : neeCashInitial;
+                const used = p === "Hon" ? honCashUsed : p === "Jay" ? jayCashUsed : neeCashUsed;
+                const topup = p === "Hon" ? honCashTopup : p === "Jay" ? jayCashTopup : neeCashTopup;
+                const remaining = p === "Hon" ? honCashRemaining : p === "Jay" ? jayCashRemaining : neeCashRemaining;
                 return (
                   <div
                     key={p}
@@ -768,7 +778,7 @@ export default function ExpensePage() {
           <div className="bg-[var(--c-card)] rounded-xl p-4 border border-[var(--c-sep)]">
             <div className="text-[14px] text-[var(--c-text)] font-semibold mb-4">👥 สรุปตามคน</div>
             <div className="space-y-4">
-              {(["Hon", "Jay"] as Person[]).map((p) => {
+              {(["Hon", "Jay", "Nee"] as Person[]).map((p) => {
                 const s = personSummary(p);
                 const total = s.personal + s.sharedPaid;
                 return (
@@ -799,6 +809,22 @@ export default function ExpensePage() {
           {(() => {
             const s = settlement();
             if (s.totalShared === 0) return null;
+            // คำนวณว่าใครต้องจ่ายใคร (simplify debts)
+            const debtors = s.people.filter((p) => s.owes[p] > 10);
+            const creditors = s.people.filter((p) => s.owes[p] < -10);
+            const transfers: { from: Person; to: Person; amount: number }[] = [];
+            const tempOwes = { ...s.owes };
+            for (const d of debtors) {
+              for (const c of creditors) {
+                if (tempOwes[d] <= 10) break;
+                const amt = Math.min(tempOwes[d], -tempOwes[c]);
+                if (amt > 10) {
+                  transfers.push({ from: d, to: c, amount: Math.round(amt) });
+                  tempOwes[d] -= amt;
+                  tempOwes[c] += amt;
+                }
+              }
+            }
             return (
               <div className="bg-[var(--c-card)] rounded-xl p-4 border border-[var(--c-sep)]">
                 <div className="text-[14px] text-[var(--c-text)] font-semibold mb-3">⚖️ ใครต้องจ่ายใครเพิ่ม</div>
@@ -806,24 +832,20 @@ export default function ExpensePage() {
                   แชร์รวม {fmtYen(s.totalShared)} → คนละ {fmtYen(Math.round(s.eachShare))}
                 </div>
                 <div className="text-[13px] space-y-1.5 mb-3">
-                  <div className="flex justify-between">
-                    <span className="text-[var(--c-text-2)]">Hon จ่ายแชร์ไป</span>
-                    <span className="font-medium text-[var(--c-text)]">{fmtYen(s.honSharedPaid)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--c-text-2)]">Jay จ่ายแชร์ไป</span>
-                    <span className="font-medium text-[var(--c-text)]">{fmtYen(s.jaySharedPaid)}</span>
-                  </div>
+                  {s.people.map((p) => (
+                    <div key={p} className="flex justify-between">
+                      <span className="text-[var(--c-text-2)]">{p} จ่ายแชร์ไป</span>
+                      <span className="font-medium text-[var(--c-text)]">{fmtYen(s.paidBy[p])}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="p-3 rounded-xl bg-[var(--c-fill-3)]">
-                  {s.honOwes > 10 ? (
-                    <div className="text-[15px] font-semibold text-center" style={{ color: PERSON_COLORS.Hon }}>
-                      Hon ต้องจ่าย Jay เพิ่ม {fmtYen(Math.round(s.honOwes))}
-                    </div>
-                  ) : s.jayOwes > 10 ? (
-                    <div className="text-[15px] font-semibold text-center" style={{ color: PERSON_COLORS.Jay }}>
-                      Jay ต้องจ่าย Hon เพิ่ม {fmtYen(Math.round(s.jayOwes))}
-                    </div>
+                <div className="p-3 rounded-xl bg-[var(--c-fill-3)] space-y-2">
+                  {transfers.length > 0 ? (
+                    transfers.map((t, i) => (
+                      <div key={i} className="text-[15px] font-semibold text-center" style={{ color: PERSON_COLORS[t.from] }}>
+                        {t.from} ต้องจ่าย {t.to} เพิ่ม {fmtYen(t.amount)}
+                      </div>
+                    ))
                   ) : (
                     <div className="text-[15px] font-semibold text-center text-[var(--c-text)]">
                       เท่ากัน ไม่ต้องจ่ายเพิ่ม ✓
@@ -946,18 +968,19 @@ export default function ExpensePage() {
           <div className="bg-[var(--c-card)] rounded-xl p-4 border border-[var(--c-sep)]">
             <div className="text-[14px] text-[var(--c-text)] font-semibold mb-3">⚙️ ตั้งค่าเงินสดเริ่มต้น</div>
             <div className="space-y-3">
-              {(["Hon", "Jay"] as Person[]).map((p) => (
+              {(["Hon", "Jay", "Nee"] as Person[]).map((p) => (
                 <div key={p} className="flex items-center gap-3">
                   <span className="text-[14px] font-medium w-10" style={{ color: PERSON_COLORS[p] }}>{p}</span>
                   <span className="text-[14px] text-[var(--c-text-2)]">¥</span>
                   <input
                     type="number"
-                    value={p === "Hon" ? data.cashPool.hon : data.cashPool.jay}
+                    value={p === "Hon" ? data.cashPool.hon : p === "Jay" ? data.cashPool.jay : (data.cashPool.nee ?? 0)}
                     onChange={(e) => {
                       const val = parseInt(e.target.value) || 0;
                       const newPool = { ...data.cashPool };
                       if (p === "Hon") newPool.hon = val;
-                      else newPool.jay = val;
+                      else if (p === "Jay") newPool.jay = val;
+                      else newPool.nee = val;
                       saveData({ ...data, cashPool: newPool });
                     }}
                     className="w-28 h-9 bg-[var(--c-input)] rounded-lg px-2 text-[15px] text-[var(--c-text)] outline-none"
@@ -1030,7 +1053,7 @@ export default function ExpensePage() {
             <div>
               <label className="block text-[13px] text-[var(--c-text-2)] mb-1">ใครจ่าย</label>
               <div className="flex gap-2">
-                {(["Hon", "Jay"] as Person[]).map((p) => (
+                {(["Hon", "Jay", "Nee"] as Person[]).map((p) => (
                   <button
                     key={p}
                     onClick={() => setEditEntry({ ...editEntry, paidBy: p })}
@@ -1189,7 +1212,7 @@ export default function ExpensePage() {
             <div>
               <label className="block text-[13px] text-[var(--c-text-2)] mb-1">เพิ่มให้ใคร</label>
               <div className="flex gap-2">
-                {(["Hon", "Jay"] as Person[]).map((p) => (
+                {(["Hon", "Jay", "Nee"] as Person[]).map((p) => (
                   <button
                     key={p}
                     onClick={() => setTopupPerson(p)}
