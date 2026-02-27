@@ -516,6 +516,7 @@ export default function Home() {
     { id: "price" as const, label: "ติดตามราคา", icon: "🏷️", enabled: true },
     { id: "travel" as const, label: "Travel", icon: "✈️", enabled: true },
     { id: "watchlist" as const, label: "Watchlist", icon: "🎬", enabled: true },
+    { id: "expense" as const, label: "Expense", icon: "💰", enabled: true },
   ];
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
@@ -580,6 +581,7 @@ export default function Home() {
                   if (item.id === "price") window.location.href = "/price-tracker";
                   if (item.id === "travel") window.location.href = "/travel/tokyo2026";
                   if (item.id === "watchlist") window.location.href = "/watchlist";
+                  if (item.id === "expense") window.location.href = "/expense";
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-[10px] text-[17px] transition-all ${
                   activeTab === item.id && item.enabled
