@@ -661,7 +661,7 @@ export default async function TokyoDayPage({
             {/* Header */}
             <div className="rounded-[18px] border border-[#BF5AF2]/45 bg-[#BF5AF2]/12 p-5 md:p-7">
               <p className="text-[24px] md:text-[34px] font-bold text-[var(--c-text)] leading-tight">Day 3: Tokyo DisneySea</p>
-              <p className="text-[14px] mt-2 text-[var(--c-text-2)]">วันอังคาร 3 มีนาคม 2026 — Fantasy Springs &middot; Frozen &middot; Toy Story &middot; Believe!</p>
+              <p className="text-[14px] mt-2 text-[var(--c-text-2)]">วันอังคาร 3 มีนาคม 2026 — Fantasy Springs &middot; Toy Story &middot; Soaring &middot; Believe!</p>
               <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
                   { label: "เปิดประตู", value: "09:00", icon: "🏁" },
@@ -684,9 +684,9 @@ export default async function TokyoDayPage({
               <p className="text-[13px] text-[var(--c-text-2)] mb-4">กดทันทีตอน 09:00 ประตูเปิด — แม่กด DPA / พ่อกด Priority Pass</p>
               <div className="space-y-3">
                 {[
-                  { time: "09:00", who: "แม่", type: "DPA (เสียเงิน)", ride: "Frozen Journey", icon: "❄️", color: "bg-[#64D2FF]/18 text-[#64D2FF] border-[#64D2FF]/40" },
+                  { time: "09:00", who: "แม่", type: "DPA (เสียเงิน)", ride: "❌ Frozen Journey — ปิดปรับปรุง! เปลี่ยนเป็น Toy Story Mania แทน", icon: "🚫", color: "bg-[#FF453A]/18 text-[#FF453A] border-[#FF453A]/40" },
                   { time: "09:00", who: "พ่อ", type: "Priority Pass (ฟรี)", ride: "Nemo & Friends SeaRider (รอบ 09:30-10:00)", icon: "🐠", color: "bg-[#30D158]/18 text-[#30D158] border-[#30D158]/40" },
-                  { time: "10:00", who: "ใครก็ได้", type: "DPA ใบที่ 2 (ครบ 1 ชม.)", ride: "Peter Pan หรือ Toy Story Mania", icon: "🧸", color: "bg-[#FF9F0A]/18 text-[#FF9F0A] border-[#FF9F0A]/40" },
+                  { time: "10:00", who: "ใครก็ได้", type: "DPA ใบที่ 2 (ครบ 1 ชม.)", ride: "❌ Peter Pan ปิดปรับปรุง! เปลี่ยนเป็น Soaring แทน", icon: "🚫", color: "bg-[#FF453A]/18 text-[#FF453A] border-[#FF453A]/40" },
                 ].map((dpa, i) => (
                   <div key={i} className={`rounded-[12px] border ${dpa.color} p-4`}>
                     <div className="flex items-center gap-2.5 flex-wrap mb-1.5">
@@ -711,11 +711,11 @@ export default async function TokyoDayPage({
                   { time: "07:00", icon: "🌅", title: "ออกจากโรงแรม", note: "แวะซื้อข้าวปั้น/รองท้องมื้อเช้าที่ร้านสะดวกซื้อ", phase: "travel" as const },
                   { time: "07:20", icon: "🚃", title: "ขึ้นรถไฟไป DisneySea", note: "JR Chuo-Sobu (สีเหลือง) → Nishi-Funabashi → JR Keiyo (สีแดง) → Maihama", phase: "travel" as const },
                   { time: "08:15", icon: "🏰", title: "ถึงหน้าประตู DisneySea", note: "นั่ง Monorail มา → ต่อแถวตรวจกระเป๋า ทานมื้อเช้าระหว่างรอ", phase: "disney" as const },
-                  { time: "09:00", icon: "🏁", title: "ประตูเปิด! กด DPA ทันที", note: "แม่กด DPA → Frozen / พ่อกด Priority Pass → Nemo", phase: "disney" as const },
+                  { time: "09:00", icon: "🏁", title: "ประตูเปิด! กด DPA ทันที", note: "แม่กด DPA → Toy Story Mania (Frozen ปิด!) / พ่อกด Priority Pass → Nemo", phase: "disney" as const },
                   { time: "09:20", icon: "🚂", title: "Electric Railway → โซน Nemo", note: "เอารถเข็นขึ้นลิฟต์ไปชั้น 2 นั่งรถไฟข้ามฟากไปลงโซน Nemo (ประหยัดแรงเดิน)", phase: "disney" as const },
                   { time: "09:40", icon: "🐠", title: "Nemo & Friends SeaRider", note: "ใช้ช่องทางด่วน Priority Pass ที่กดไว้", phase: "disney" as const },
-                  { time: "10:00", icon: "⏰", title: "นาฬิกาปลุกดัง! กด DPA ใบ 2", note: "Peter Pan หรือ Toy Story Mania", phase: "disney" as const },
-                  { time: "10:30", icon: "🧚", title: "Fantasy Springs", note: "เล่น Anna and Elsa's Frozen Journey (ตามเวลา DPA) + ถ่ายรูปโซนใหม่", phase: "disney" as const },
+                  { time: "10:00", icon: "⏰", title: "นาฬิกาปลุกดัง! กด DPA ใบ 2", note: "Soaring: Fantastic Flight (Peter Pan ปิด!)", phase: "disney" as const },
+                  { time: "10:30", icon: "🧚", title: "Fantasy Springs", note: "เดินถ่ายรูปโซนใหม่ (Frozen Journey ปิดปรับปรุง)", phase: "disney" as const },
                   { time: "12:00", icon: "🍕", title: "มื้อเที่ยง: Sebastian's Calypso Kitchen", note: "โซน Mermaid Lagoon — พิซซ่าซีฟู้ด, แซนด์วิช / กด Mobile Order ล่วงหน้า 30 นาที", phase: "food" as const },
                   { time: "13:30", icon: "🧜", title: "Mermaid Lagoon (Indoor)", note: "Blowfish Balloon Race / Flounder's Coaster — แอร์เย็น ถ้าลูกง่วงนอนรถเข็นได้", phase: "disney" as const },
                   { time: "15:00", icon: "🧞", title: "Arabian Coast: Sindbad's Voyage", note: "เรือล่องช้าๆ เพลงเพราะ นั่งพักสบาย — ผ่อนคลายช่วงบ่าย", phase: "disney" as const },
