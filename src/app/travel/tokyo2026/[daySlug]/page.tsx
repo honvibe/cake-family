@@ -40,6 +40,19 @@ export default async function TokyoDayPage({
     checkOut: "Sunday March 8, 2026 (before 10:00 AM)",
   };
 
+  const WEATHER: Record<number, { icon: string; temp: string; desc: string; area: string; tip: string }> = {
+    1: { icon: "☀️", temp: "7° – 16°", desc: "แดดออก", area: "Tokyo", tip: "อากาศดี แต่กลางคืนเย็น เตรียมแจ็คเก็ต" },
+    2: { icon: "☁️", temp: "9° – 13°", desc: "เมฆมาก", area: "Tokyo", tip: "อากาศเย็นสบาย ช้อปในร่มเป็นหลัก ไม่มีปัญหา" },
+    3: { icon: "🌧️", temp: "6° – 10°", desc: "ฝน 85%", area: "Tokyo (DisneySea)", tip: "⚠️ ฝนเกือบแน่นอน! เตรียม poncho + hot pack + แต่งกันน้ำ" },
+    4: { icon: "🌦️", temp: "5° – 12°", desc: "ฝน 45%", area: "Tokyo", tip: "พกร่มพับไว้ อาจมีฝนช่วงบ่าย" },
+    5: { icon: "☀️", temp: "4° – 13°", desc: "แดดออก", area: "Kamakura", tip: "วันดีสุด! ถ่ายรูปสวย เช้าหนาวใส่ layer" },
+    6: { icon: "☁️", temp: "2° – 8°", desc: "เมฆมาก", area: "Fujikawaguchiko", tip: "⚠️ หนาวจัด! ใส่หนาสุด + ถุงมือ หมวก ผ้าพันคอ ฟูจิอาจไม่ชัด" },
+    7: { icon: "🌧️", temp: "6° – 12°", desc: "ฝน 55%", area: "Kawagoe → Ginza", tip: "พกร่ม Pedestrian Paradise อาจไม่จัดถ้าฝนตก" },
+    8: { icon: "☀️", temp: "5° – 12°", desc: "แดดออก", area: "Tokyo → BKK", tip: "อากาศดี เดินทางสบาย" },
+  };
+
+  const weather = WEATHER[dayNumber];
+
   return (
     <MainNavigationShell>
       <div className="w-full max-w-[1200px] mx-auto">
@@ -60,7 +73,22 @@ export default async function TokyoDayPage({
 
         <TokyoLangWrap>
         <div className="lang-th">
-        <div className="mt-6 md:mt-7">
+        {/* Weather Card */}
+        {weather && (
+          <div className="mt-4 mb-5 rounded-[14px] border border-[var(--c-sep)] bg-gradient-to-r from-[var(--c-card-alt)] to-[var(--c-card)] p-4 flex items-center gap-4">
+            <div className="text-[36px] shrink-0">{weather.icon}</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[18px] font-bold text-[var(--c-text)]">{weather.temp}</span>
+                <span className="text-[13px] text-[var(--c-text-3)]">{weather.desc}</span>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--c-fill-3)] text-[var(--c-text-2)]">{weather.area}</span>
+              </div>
+              <p className="text-[13px] text-[var(--c-text-2)] mt-1">{weather.tip}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-2 md:mt-3">
         {dayNumber === 1 ? (
           <div className="space-y-5">
             {/* Flight Info */}
